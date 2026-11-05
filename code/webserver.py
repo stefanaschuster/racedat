@@ -56,7 +56,7 @@ sys.path.insert(0, str(HERE))
 
 # Bumped on every release; surfaced ONLY on the /admin page so you can verify
 # from the browser which build is actually loaded into the running process.
-VERSION = "v23.20"
+VERSION = "v23.21"
 PROCESS_START_UTC = datetime.now(timezone.utc)
 
 def version_info() -> dict:
@@ -143,9 +143,11 @@ import mailer
 # ---------- Configuration ---------------------------------------------------
 
 ALLOWED_EXTS = {".ses", ".ld", ".xrk", ".xrz", ".csv", ".dat", ".zip"}
-MAX_UPLOAD_BYTES = 70 * 1024 * 1024
+# nativeAI: der Proxy erlaubt höchstens 10 MB pro Request.
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
-WEBAPP_DIR = HERE / "webapp"
+WEBAPP_DIR = HERE / "webapp"     # HTML-Templates
+STATIC_DIR = HERE / "static"     # ausgelieferte JS/CSS-Assets
 
 
 # ---------- Template helpers ------------------------------------------------
@@ -679,7 +681,7 @@ def _parse_multipart(handler) -> dict:
     if not cl_str:
         raise ValueError("Missing Content-Length")
     total = int(cl_str)
-    max_total = 4 * MAX_UPLOAD_BYTES + 1024 * 1024
+    max_total = MAX_UPLOAD_BYTES + 1024 * 1024
     if total > max_total:
         raise UploadTooLarge(
             f"Total upload {total/1024/1024:.1f} MB > limit "
@@ -899,6 +901,10 @@ class AppState:
         cls.server_secret = _load_or_create_secret(data_dir / "server_secret")
         cls.config, cls.maptiler_key, cls.base_url = \
             cls._load_config(data_dir / "config.json")
+        # nativeAI: Konfiguration/Geheimnisse kommen aus .env (Umgebungs-
+        # variablen); config.json bleibt optionaler Fallback.
+        cls.config, cls.maptiler_key, cls.base_url = \
+            cls._overlay_env(cls.config, cls.maptiler_key, cls.base_url)
         # v23.4 — Registration is only offered if SMTP is fully configured;
         # checked once at startup so a boot-log warning surfaces
         # misconfiguration immediately instead of failing silently on the
@@ -913,6 +919,26 @@ class AppState:
         except mailer.MailerNotConfigured as e:
             cls.registration_enabled = False
             print(f"[config] Registrierung deaktiviert: {e}", file=sys.stderr)
+
+    @staticmethod
+    def _overlay_env(cfg: dict, maptiler_key: str, base_url: str):
+        """Umgebungsvariablen (.env) überschreiben config.json.
+        MAPTILER_KEY, BASE_URL, BREVO_API_KEY, MAIL_SENDER_EMAIL,
+        MAIL_SENDER_NAME."""
+        e = os.environ.get
+        cfg = dict(cfg or {})
+        mk = (e("MAPTILER_KEY") or "").strip() or maptiler_key
+        bu = (e("BASE_URL") or "").strip().rstrip("/") or base_url
+        mail = dict(cfg.get("smtp") or {}) if isinstance(cfg.get("smtp"), dict) else {}
+        if e("BREVO_API_KEY"):
+            mail["api_key"] = e("BREVO_API_KEY").strip()
+        if e("MAIL_SENDER_EMAIL"):
+            mail["sender_email"] = e("MAIL_SENDER_EMAIL").strip()
+        if e("MAIL_SENDER_NAME"):
+            mail["sender_name"] = e("MAIL_SENDER_NAME").strip()
+        if mail:
+            cfg["smtp"] = mail
+        return (cfg, mk, bu)
 
     @staticmethod
     def _load_config(path: Path) -> tuple[dict, str, str]:
@@ -3374,7 +3400,7 @@ class WebHandler(BaseHTTPRequestHandler):
   <form id="upload-form" method="POST" action="/sessions/upload" enctype="multipart/form-data">
     <div class="section-title">
       <h2>DATEI</h2>
-      <span class="num">.SES · .LD · .XRK · .XRZ · .CSV · .DAT (I2M) · .ZIP (2D) · MAX 70MB</span>
+      <span class="num">.SES · .LD · .XRK · .XRZ · .CSV · .DAT (I2M) · .ZIP (2D) · MAX 10MB</span>
     </div>
     <label class="drop-zone" id="drop">
       <div class="icon">⌁</div>
@@ -5573,7 +5599,7 @@ footer a:hover{{color:var(--accent)}}
         ct = ext_to_ct.get(suffix)
         if ct is None:
             return self._send_text(HTTPStatus.NOT_FOUND, "Not found")
-        fp = WEBAPP_DIR / rel_path
+        fp = STATIC_DIR / rel_path
         try:
             body = fp.read_bytes()
         except (FileNotFoundError, IsADirectoryError):
@@ -5586,179 +5612,3 @@ footer a:hover{{color:var(--accent)}}
         self.send_header("Cache-Control", "public, max-age=300")
         self.end_headers()
         self.wfile.write(body)
-
-
-# ---------- Entry point -----------------------------------------------------
-
-def _make_server(host: str, port: int,
-                 ssl_context: "Optional[ssl.SSLContext]" = None
-                 ) -> ThreadingHTTPServer:
-    """Build a ThreadingHTTPServer. If ssl_context is provided, the listening
-    socket is wrapped with TLS — every accepted connection is then TLS."""
-    srv = ThreadingHTTPServer((host, port), WebHandler)
-    # v23.3 — ThreadingMixIn.daemon_threads defaults to False, meaning every
-    # per-connection worker thread is non-daemon. Combined with a stalled
-    # connection (see WebHandler.timeout), that either leaks a thread
-    # forever or — even with the timeout fix above as a safety net — blocks
-    # a clean process shutdown, since Python waits for all non-daemon
-    # threads to finish before the interpreter can exit. Daemon threads let
-    # the process exit immediately on shutdown regardless of stuck workers.
-    srv.daemon_threads = True
-    if ssl_context is not None:
-        # Wrap the listening socket. accept() returns already-TLS sockets.
-        srv.socket = ssl_context.wrap_socket(srv.socket, server_side=True)
-    return srv
-
-
-def _bind_helpful_error(host: str, port: int, err: Exception) -> str:
-    """Friendlier message for the two most common bind failures."""
-    msg = f"could not bind {host}:{port} — {err}"
-    if isinstance(err, PermissionError) or "Permission denied" in str(err):
-        msg += "\n  → ports below 1024 require root: try `sudo`"
-        msg += "\n    or run on a high port and put a reverse proxy in front"
-    elif isinstance(err, OSError) and getattr(err, "errno", 0) == 98:
-        msg += "\n  → port is already in use; pick another or stop the other process"
-    return msg
-
-
-def main():
-    ap = argparse.ArgumentParser(
-        description="Racedat web UI with session library. Stdlib-only.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__,
-    )
-    ap.add_argument("--host", default="0.0.0.0",
-                    help="Interface to bind to (default 0.0.0.0 = all)")
-    ap.add_argument("--port", type=int, default=8000,
-                    help="Legacy HTTP port (default 8000). Used when neither "
-                         "--http-port nor --https-port is set.")
-
-    # New v17 — production-style ports
-    ap.add_argument("--http-port", type=int, default=None,
-                    help="HTTP listener port (e.g. 80). Disable HTTP by "
-                         "omitting this and using only --https-port.")
-    ap.add_argument("--https-port", type=int, default=None,
-                    help="HTTPS listener port (e.g. 443). Requires --cert "
-                         "and --key.")
-    ap.add_argument("--cert", default=None,
-                    help="Path to TLS certificate (PEM, e.g. fullchain.pem)")
-    ap.add_argument("--key", default=None,
-                    help="Path to TLS private key (PEM, e.g. privkey.pem)")
-
-    ap.add_argument("--data", default="/var/lap_compare",
-                    help="Data directory (default /var/lap_compare). Holds "
-                         "sessions.db, originals/, adhoc_uploads/, reports/")
-    # v22.1 — Opt-in structured logging on stderr. When set, every request
-    # gets a logfmt line (method, path, status, dur_ms, user, ip) plus
-    # extra lines for auth events and mutating actions. Off by default to
-    # keep production stderr quiet.
-    ap.add_argument("--debug-log", action="store_true",
-                    help="Enable verbose structured logging on stderr "
-                         "(logfmt key=value format). Logs every request, "
-                         "auth event (login/logout), and mutating action "
-                         "(upload, edit, delete, compare, analyze).")
-    args = ap.parse_args()
-
-    # Configure the global logger BEFORE anything else can call into it.
-    debuglog.configure(enabled=args.debug_log)
-
-    # Decide on which listeners we want.
-    # - If neither --http-port nor --https-port is given, fall back to legacy
-    #   single-HTTP behaviour on --port (default 8000) for back-compat.
-    # - If --https-port is given, --cert and --key are required.
-    listeners = []   # list of (label, host, port, ssl_ctx)
-
-    if args.https_port is not None:
-        if not args.cert or not args.key:
-            ap.error("--https-port requires --cert and --key")
-        cert_path = Path(args.cert).expanduser().resolve()
-        key_path = Path(args.key).expanduser().resolve()
-        if not cert_path.is_file():
-            ap.error(f"--cert not found: {cert_path}")
-        if not key_path.is_file():
-            ap.error(f"--key not found: {key_path}")
-        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
-        try:
-            ctx.load_cert_chain(certfile=str(cert_path), keyfile=str(key_path))
-        except ssl.SSLError as e:
-            ap.error(f"failed to load TLS cert/key: {e}")
-        listeners.append(("HTTPS", args.host, args.https_port, ctx))
-
-    if args.http_port is not None:
-        listeners.append(("HTTP ", args.host, args.http_port, None))
-
-    if not listeners:
-        # Back-compat: just one HTTP listener on --port
-        listeners.append(("HTTP ", args.host, args.port, None))
-
-    data_dir = Path(args.data).expanduser().resolve()
-    AppState.init(data_dir)
-
-    # Build all servers up-front so we fail early if one port can't bind
-    servers = []
-    for label, host, port, ctx in listeners:
-        try:
-            srv = _make_server(host, port, ssl_context=ctx)
-        except OSError as e:
-            sys.stderr.write("ERROR: " + _bind_helpful_error(host, port, e) + "\n")
-            # Tear down any already-created servers
-            for _, _, s in servers:
-                try: s.server_close()
-                except Exception: pass
-            return 1
-        servers.append((label, port, srv))
-
-    print("")
-    print("  ╔═════════════════════════════════════════════╗")
-    # v22.0 — Version mit ausgeben, damit beim Server-Start klar ist welche
-    # Build-Generation läuft (z.B. nach Deploy von verschiedenen Branches).
-    title = f"RACEDAT · WEB · {VERSION}"
-    pad = max(0, 45 - len(title))
-    left = pad // 2
-    right = pad - left
-    print("  ║" + (" " * left) + title + (" " * right) + "║")
-    print("  ╠═════════════════════════════════════════════╣")
-    for label, port, _srv in servers:
-        scheme = "https" if label.strip() == "HTTPS" else "http"
-        url = f"  ║  {label}  {scheme}://{args.host}:{port}"
-        print(url.ljust(46) + "║")
-    print(f"  ║  Data dir   {str(data_dir):<32}".ljust(46) + "║")
-    print(f"  ║  Database   {str(AppState.db.db_path.name):<32}".ljust(46) + "║")
-    print(f"  ║  Max upload {MAX_UPLOAD_BYTES/1024/1024:.0f} MB / file".ljust(46) + "║")
-    if args.debug_log:
-        # Make it loud — debug-log is a deliberate opt-in but easy to
-        # forget about, so the operator should see it confirmed on start.
-        print(f"  ║  Debug log  ON (stderr, logfmt)".ljust(46) + "║")
-    print( "  ║  Stop with Ctrl-C                           ║")
-    print("  ╚═════════════════════════════════════════════╝")
-    print("")
-
-    # Run each listener in its own thread so they can serve concurrently.
-    import threading as _threading
-    threads = []
-    for label, port, srv in servers:
-        t = _threading.Thread(target=srv.serve_forever,
-                              name=f"listener-{label.strip()}-{port}",
-                              daemon=True)
-        t.start()
-        threads.append(t)
-
-    try:
-        # Park the main thread on the first listener (Ctrl-C will land here)
-        while any(t.is_alive() for t in threads):
-            for t in threads:
-                t.join(timeout=1.0)
-    except KeyboardInterrupt:
-        print("\nShutting down…")
-        for label, port, srv in servers:
-            try:
-                srv.shutdown()
-                srv.server_close()
-            except Exception:
-                pass
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main() or 0)

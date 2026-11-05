@@ -83,7 +83,7 @@ const allIds = [
 allIds.forEach(id => { docElements[id] = makeFakeEl(); });
 
 // ---- Load the module into a vm context -----------------------------------
-const src = fs.readFileSync(new URL('../webapp/speed_chart.js', import.meta.url), 'utf-8');
+const src = fs.readFileSync(new URL('../static/speed_chart.js', import.meta.url), 'utf-8');
 const ctx = vm.createContext({
   window: fakeWindow,
   document: fakeDocument,

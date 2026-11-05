@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Admin · Racedat</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a; --bg-2:#141414;
+  --ink:#f5f5f0; --ink-dim:#a0a0a0; --ink-faint:#888;
+  --line:#262626;
+  --a-color:#ff3d00; --b-color:#00d4ff;
+  --accent:#00d4ff;
+  --report-color:#00d4ff;
+  --analysis-color:#ffb000;
+  --ok-color:#52d671;
+  --fail-color:#ff3d00;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',sans-serif;line-height:1.5;min-height:100vh}
+.mono{font-family:'JetBrains Mono',monospace;font-feature-settings:'tnum'}
+.page{max-width:1280px;margin:0 auto;padding:48px 32px 80px}
+
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--a-color);text-transform:uppercase;margin-bottom:16px}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5vw,56px);line-height:.9;letter-spacing:.01em;background:linear-gradient(180deg,var(--ink) 0%,#888 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.subtitle{color:var(--ink-dim);font-size:14px;margin-top:12px;max-width:640px;line-height:1.6}
+
+/* Tabs */
+.tabs{display:flex;gap:8px;margin:32px 0 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tabs .tab{
+  padding:12px 18px 14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--ink-dim);text-decoration:none;border-bottom:2px solid transparent;
+  margin-bottom:-1px;display:inline-flex;gap:10px;align-items:baseline;
+}
+.tabs .tab:hover{color:var(--ink)}
+.tabs .tab.active{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs .tab .count{font-size:10px;color:var(--ink-faint);font-feature-settings:'tnum'}
+.tabs .tab.active .count{color:var(--accent)}
+
+.count-text{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-dim);margin:16px 0 16px;letter-spacing:.05em}
+
+/* Build / version line — appears ONLY on the admin page. Lets you verify
+   from the browser which build is actually running, the file SHAs on disk,
+   and when the process was last restarted. */
+.version-info{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;
+  background:var(--bg-2);border:1px solid var(--line);border-left:3px solid var(--accent);
+  padding:10px 14px;margin:20px 0 8px;
+  font-size:11px;color:var(--ink-dim);letter-spacing:.04em;
+}
+.version-info .vi-tag{
+  background:var(--accent);color:#000;font-weight:600;
+  padding:2px 8px;letter-spacing:.15em;font-size:10px;
+}
+.version-info .vi-version{color:var(--ink);font-weight:600;font-size:13px;letter-spacing:.08em}
+.version-info .vi-label{color:var(--ink-faint);text-transform:uppercase;letter-spacing:.12em;font-size:10px}
+.version-info .vi-sep{color:var(--line)}
+.version-info .vi-faint{color:var(--ink-faint);font-size:10px}
+
+.filter-bar{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;
+  background:var(--bg-2);border:1px solid var(--line);
+  padding:20px;margin:0 0 24px;
+}
+.filter-bar .field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.filter-bar label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-faint);letter-spacing:.15em;text-transform:uppercase}
+.filter-bar input, .filter-bar select{
+  background:var(--bg);border:1px solid var(--line);color:var(--ink);
+  font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 10px;outline:none;
+}
+.filter-bar input:focus, .filter-bar select:focus{border-color:var(--accent)}
+.filter-bar .field.span2{grid-column:span 2}
+
+/* Reports/Analyses row — now with 'who' column */
+.artefact-list{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--line)}
+.artefact-row{
+  display:grid;
+  grid-template-columns: 110px 170px minmax(0,1fr) 200px minmax(0,1.6fr) 80px 100px;
+  gap:14px;align-items:center;padding:16px 0;border-bottom:1px solid var(--line);
+}
+.artefact-row .col-kind{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.15em}
+.artefact-row .col-when{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.artefact-row .col-track{font-size:14px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.artefact-row .col-who{font-size:12px;color:var(--ink);overflow:hidden}
+.artefact-row .col-summary{font-size:13px;color:var(--ink);min-width:0}
+.artefact-row .col-summary .lap-time{color:var(--accent);font-weight:500;font-size:14px}
+.artefact-row .col-size{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);text-align:right}
+.artefact-row .col-actions{display:flex;gap:6px;justify-content:flex-end;align-items:center}
+
+/* Event row — used for logins and uploads */
+.event-list{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--line)}
+.event-row{
+  display:grid;
+  grid-template-columns: 130px 170px minmax(0,1fr) 130px minmax(0,1.6fr) 60px;
+  gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line);
+}
+.event-row .col-kind{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.15em}
+.event-row .col-when{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.event-row .col-who{font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.event-row .col-ip{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* v22.11 — clickable IPs in the .col-ip cells link to /admin/ip-lookup.
+   Underline-on-hover only, so the column doesn't look busier than it is. */
+.event-row .col-ip a.ip-link{color:var(--ink-dim);text-decoration:none;border-bottom:1px dotted var(--line)}
+.event-row .col-ip a.ip-link:hover{color:var(--accent);border-bottom-color:var(--accent)}
+/* v22.11 — clickable IP -> /admin/ip-lookup. Subtle by default (looks like
+   plain text), highlights on hover so the row stays calm at a glance. */
+.event-row .col-ip a.ip-link{color:inherit;text-decoration:none;border-bottom:1px dotted var(--ink-faint)}
+.event-row .col-ip a.ip-link:hover{color:var(--accent);border-bottom-color:var(--accent)}
+.event-row .col-detail{font-size:12px;color:var(--ink);min-width:0;overflow:hidden;word-break:break-all}
+.event-row .col-actions{display:flex;justify-content:flex-end;align-items:center}
+
+.pill{display:inline-block;padding:3px 10px;border-radius:2px;font-weight:500}
+.pill-report{background:rgba(0,212,255,.12);color:var(--report-color);border:1px solid rgba(0,212,255,.3)}
+.pill-analysis{background:rgba(255,176,0,.12);color:var(--analysis-color);border:1px solid rgba(255,176,0,.3)}
+.pill-coach{background:rgba(199,125,255,.12);color:#c77dff;border:1px solid rgba(199,125,255,.3)}
+.pill-compare{background:rgba(255,61,0,.12);color:#ff3d00;border:1px solid rgba(255,61,0,.3)}
+.pill-ok{background:rgba(82,214,113,.12);color:var(--ok-color);border:1px solid rgba(82,214,113,.3)}
+.pill-fail{background:rgba(255,61,0,.12);color:var(--fail-color);border:1px solid rgba(255,61,0,.3)}
+.pill-session{background:rgba(0,212,255,.12);color:var(--report-color);border:1px solid rgba(0,212,255,.3)}
+.pill-adhoc{background:rgba(255,176,0,.12);color:var(--analysis-color);border:1px solid rgba(255,176,0,.3)}
+
+.btn{
+  font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.05em;
+  background:var(--accent);color:#000;border:none;padding:12px 24px;
+  cursor:pointer;text-decoration:none;display:inline-block;
+}
+.btn:hover{background:#1ee4ff}
+.btn.small{font-size:11px;padding:6px 12px;letter-spacing:.15em;font-family:'JetBrains Mono',monospace}
+.btn.secondary{background:var(--bg-2);color:var(--ink);border:1px solid var(--line)}
+.btn.secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn.danger{background:transparent;color:var(--a-color);border:1px solid var(--a-color)}
+.btn.danger:hover{background:var(--a-color);color:#000}
+
+.empty-state{
+  background:var(--bg-2);border:1px dashed var(--line);
+  padding:64px 32px;text-align:center;margin:24px 0;
+}
+.empty-state .icon{font-family:'Bebas Neue',sans-serif;font-size:64px;color:var(--ink-faint)}
+.empty-state .label{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--ink);margin:16px 0 8px;letter-spacing:.02em}
+.empty-state .hint{color:var(--ink-dim);font-size:13px;margin-bottom:24px;font-family:'JetBrains Mono',monospace;letter-spacing:.05em}
+
+.flash{
+  background:#0a2128;border-left:3px solid var(--accent);
+  padding:12px 20px;margin-bottom:24px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink);
+}
+.flash.error{background:#2a0a05;border-left-color:var(--a-color)}
+
+footer{margin-top:80px;padding-top:32px;border-top:1px solid var(--line);color:var(--ink-faint);font-family:'JetBrains Mono',monospace;font-size:11px;display:flex;justify-content:space-between;letter-spacing:.05em;flex-wrap:wrap;gap:16px}
+
+@media (max-width:1000px){
+  .artefact-row, .event-row{
+    grid-template-columns: minmax(0,1fr) auto;
+    gap:8px;padding:16px 0;
+  }
+  .artefact-row > *, .event-row > *{grid-column:1/-1}
+  .artefact-row .col-actions, .event-row .col-actions{grid-column:1/-1;justify-content:flex-start}
+}
+@media (max-width:520px){
+  .page{padding:24px 16px 64px}
+}
+</style>
+</head>
+<body>
+{{HEADER}}
+<div class="page">
+  {{FLASH}}
+
+  <div class="eyebrow">Verwaltung</div>
+  <h1>ADMIN</h1>
+  <div class="subtitle">
+    Übersicht über alle generierten Reports und Datenviewer-Aufrufe, sowie Audit-Log
+    für Logins und Uploads. Runden verwaltest du wie gewohnt unter
+    <a href="/sessions" style="color:var(--accent)">Runden</a>.
+  </div>
+
+  {{VERSION_INFO}}
+
+  {{TABS}}
+
+  <div class="count-text">{{COUNT_TEXT}}</div>
+
+  <div class="filter-bar">
+    <div class="field span2">
+      <label>SUCHE</label>
+      <input type="text" id="f-search" placeholder="Volltext durchsuchen…">
+    </div>
+    <div class="field">
+      <label>TYP</label>
+      <select id="f-kind"><option value="">— alle —</option></select>
+    </div>
+  </div>
+
+  {{LIST}}
+
+  <footer>
+    <span>RACEDAT · FASTER WITH DATA</span>
+    <span><a href="/impressum" style="color:inherit;text-decoration:none">Impressum</a> · <a href="/datenschutz" style="color:inherit;text-decoration:none">Datenschutz</a></span>
+    <span>{{NOW}}</span>
+  </footer>
+</div>
+
+<script>
+// Generic filter that works for both .artefact-row and .event-row
+const rows = [...document.querySelectorAll('.artefact-row, .event-row')];
+const search = document.getElementById('f-search');
+const dKind = document.getElementById('f-kind');
+
+// Populate the kind dropdown from current rows' data-kind
+(function(){
+  const seen = new Set();
+  rows.forEach(r => {
+    const k = (r.dataset.kind || '').trim();
+    if (k) seen.add(k);
+  });
+  const labels = {
+    'report':'VERGLEICH (LEGACY)', 'analysis':'DATENVIEWER (LEGACY)',
+    'view_analysis':'DATENVIEWER',
+    'view_coach':'AI COACH',
+    'view_compare':'VERGLEICH',
+    'login':'LOGIN ERFOLGREICH', 'login_fail':'LOGIN FEHLGESCHLAGEN',
+    'upload_session':'RUNDEN-UPLOAD', 'upload_adhoc':'AD-HOC UPLOAD'
+  };
+  [...seen].sort().forEach(k => {
+    const o = document.createElement('option');
+    o.value = k; o.textContent = labels[k] || k.toUpperCase();
+    dKind.appendChild(o);
+  });
+})();
+
+function apply(){
+  const q = (search.value || '').toLowerCase();
+  const wKind = dKind.value;
+  rows.forEach(r => {
+    const text = r.textContent.toLowerCase();
+    const kind = r.dataset.kind || '';
+    let show = true;
+    if (q && !text.includes(q)) show = false;
+    if (wKind && kind !== wKind) show = false;
+    r.style.display = show ? '' : 'none';
+  });
+}
+[search, dKind].forEach(el => el && el.addEventListener('input', apply));
+dKind.addEventListener('change', apply);
+</script>
+</body>
+</html>

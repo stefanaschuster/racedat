@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Datenschutz · Racedat</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a; --bg-2:#141414;
+  --ink:#f5f5f0; --ink-dim:#a0a0a0; --ink-faint:#888;
+  --line:#262626;
+  --a-color:#ff3d00; --accent:#00d4ff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',sans-serif;line-height:1.6;min-height:100vh}
+.page{max-width:720px;margin:0 auto;padding:48px 32px 80px}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--ink-dim);text-transform:uppercase;margin-bottom:16px}
+h1{font-family:'Bebas Neue',sans-serif;font-size:48px;line-height:.9;letter-spacing:.01em;margin-bottom:8px}
+.stand{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);margin-bottom:32px}
+h2{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.03em;margin:32px 0 12px;color:var(--accent)}
+h3{font-size:15px;font-weight:600;margin:20px 0 8px;color:var(--ink)}
+p,li{color:var(--ink-dim);font-size:14px;margin-bottom:12px}
+ul{margin:0 0 12px 20px}
+li{margin-bottom:6px}
+p strong,li strong{color:var(--ink)}
+a{color:var(--accent)}
+.block{background:var(--bg-2);border-left:3px solid var(--accent);padding:20px 24px;margin-bottom:24px}
+.block p{margin-bottom:4px}
+footer{margin-top:48px;padding-top:24px;border-top:1px solid var(--line);color:var(--ink-faint);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.05em;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+footer a{color:var(--ink-faint);text-decoration:none}
+footer a:hover{color:var(--accent)}
+
+@media (max-width:600px){
+  .page{padding:32px 16px 48px}
+  h1{font-size:34px}
+  h2{font-size:20px}
+  .block{padding:16px}
+}
+</style>
+</head>
+<body>
+{{HEADER}}
+<div class="page">
+  <div class="eyebrow">Rechtliches</div>
+  <h1>DATENSCHUTZERKLÄRUNG</h1>
+  <div class="stand">Stand: <span data-legal="stand">…</span></div>
+
+  <h2>1. Verantwortlicher</h2>
+  <div class="block">
+    <p><strong data-legal="name">…</strong></p>
+    <p data-legal="strasse">…</p>
+    <p data-legal="plzOrt">…</p>
+    <p>E-Mail: <a data-legal-mailto href="#">…</a></p>
+  </div>
+  <p>Ein Datenschutzbeauftragter ist nicht benannt, da die gesetzlichen
+     Voraussetzungen für eine Benennungspflicht nicht vorliegen.</p>
+
+  <h2>2. Hosting</h2>
+  <p>Diese Website wird gehostet bei:
+     <strong data-legal="hosterName">…</strong>,
+     <span data-legal="hosterAnschrift">…</span>.
+     Beim Aufruf der Website verarbeitet der Server technisch bedingt
+     Verbindungsdaten (IP-Adresse, Zeitpunkt, aufgerufene Seite,
+     Browser-Kennung). Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO
+     (berechtigtes Interesse am sicheren und stabilen Betrieb).</p>
+
+  <h2>3. Nutzerkonto und Registrierung</h2>
+  <p>Für das Hochladen und Verwalten von Sessions ist ein Nutzerkonto
+     erforderlich. Bei der Registrierung verarbeiten wir:</p>
+  <ul>
+    <li><strong>E-Mail-Adresse</strong> — als Login-Kennung und zur
+        Bestätigung der Registrierung (Double-Opt-In per Bestätigungslink,
+        24 Stunden gültig)</li>
+    <li><strong>Passwort</strong> — ausschließlich als kryptografischer
+        Hash (PBKDF2-SHA256) gespeichert, niemals im Klartext</li>
+    <li><strong>Zeitpunkt der Registrierung und der E-Mail-Bestätigung</strong></li>
+  </ul>
+  <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Bereitstellung des
+     Nutzerkontos). Das Konto kann jederzeit durch Nachricht an die oben
+     genannte E-Mail-Adresse gelöscht werden; dabei werden auch die
+     zugehörigen Profildaten und Uploads entfernt.</p>
+
+  <h2>4. E-Mail-Versand über Brevo</h2>
+  <p>Für den Versand von Bestätigungs-E-Mails (Registrierung) nutzen wir den
+     Dienst <strong>Brevo</strong> (Sendinblue GmbH, Köpenicker Str. 126,
+     10179 Berlin) als Auftragsverarbeiter nach Art. 28 DSGVO. Dabei wird
+     die E-Mail-Adresse des Empfängers an Brevo übermittelt.
+     Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO. Weitere Informationen:
+     <a href="https://www.brevo.com/de/legal/privacypolicy/" rel="noopener"
+        target="_blank">Datenschutzerklärung von Brevo</a>.</p>
+
+  <h2>5. Profil, Fahrerfoto und Motorradbilder</h2>
+  <p>Im Profil können freiwillig weitere Angaben hinterlegt werden
+     (z.B. Name, Motorräder) sowie ein Fahrerfoto und Bilder der eigenen
+     Motorräder hochgeladen werden. Diese Bilder werden unverändert
+     gespeichert — enthaltene Metadaten (z.B. EXIF-Daten wie Aufnahmeort
+     und -zeit) werden nicht automatisch entfernt. Bitte lade nur Bilder
+     hoch, deren Veröffentlichung du selbst verantworten kannst.
+     Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO; die Angaben sind
+     freiwillig und können im Profil jederzeit geändert oder entfernt
+     werden.</p>
+
+  <h2>6. Hochgeladene Sessions und Telemetriedaten</h2>
+  <p>Kernfunktion der Website ist das Hochladen und Auswerten von
+     Renn-Telemetriedaten (z.B. Rundenzeiten, GPS-Spuren,
+     Fahrzeugdaten aus Logger-Dateien). Diese Daten können
+     Rückschlüsse auf Ort und Zeit des Aufenthalts der hochladenden Person
+     zulassen. Die Uploads werden dem jeweiligen Nutzerkonto zugeordnet
+     gespeichert und sind je nach Funktion für andere angemeldete Nutzer
+     sichtbar (z.B. Vergleiche, Bestenlisten). Rechtsgrundlage ist
+     Art. 6 Abs. 1 lit. b DSGVO. Uploads können jederzeit selbst gelöscht
+     werden.</p>
+
+  <h2>7. Aktivitätsprotokoll und IP-Adressen</h2>
+  <p>Sicherheitsrelevante Aktionen (Login, Registrierung, Uploads,
+     Änderungen) werden mit Zeitstempel, Nutzerkennung und
+     <strong>IP-Adresse</strong> protokolliert. Zweck ist die
+     Missbrauchserkennung und die Absicherung des Betriebs
+     (Art. 6 Abs. 1 lit. f DSGVO). Die Protokolleinträge werden
+     automatisch nach 30 Tagen gelöscht.</p>
+
+  <h2>8. Cookies</h2>
+  <p>Die Website verwendet ausschließlich ein technisch notwendiges
+     Login-Cookie (Session-Token), um angemeldete Nutzer zu erkennen.
+     Es werden keine Tracking- oder Marketing-Cookies gesetzt und keine
+     Analyse-Dienste Dritter eingebunden. Rechtsgrundlage ist
+     § 25 Abs. 2 Nr. 2 TDDDG i.V.m. Art. 6 Abs. 1 lit. b DSGVO.</p>
+
+  <h2>9. Externe Schriftarten</h2>
+  <p>Zur Darstellung werden Schriftarten von Google Fonts geladen. Dabei
+     wird die IP-Adresse des aufrufenden Geräts an Google übermittelt.
+     Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (einheitliche
+     Darstellung). Wer das vermeiden möchte, kann die Seite mit blockierten
+     Drittanbieter-Anfragen nutzen — die Funktion bleibt erhalten.</p>
+
+  <h2>10. Deine Rechte</h2>
+  <p>Du hast gegenüber dem Verantwortlichen folgende Rechte hinsichtlich
+     deiner personenbezogenen Daten:</p>
+  <ul>
+    <li>Auskunft (Art. 15 DSGVO)</li>
+    <li>Berichtigung (Art. 16 DSGVO)</li>
+    <li>Löschung (Art. 17 DSGVO)</li>
+    <li>Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
+    <li>Datenübertragbarkeit (Art. 20 DSGVO)</li>
+    <li>Widerspruch gegen die Verarbeitung (Art. 21 DSGVO)</li>
+  </ul>
+  <p>Zur Ausübung genügt eine formlose Nachricht an
+     <a data-legal-mailto href="#">…</a>.</p>
+
+  <h2>11. Beschwerderecht bei der Aufsichtsbehörde</h2>
+  <p>Du hast das Recht, dich bei einer Datenschutz-Aufsichtsbehörde zu
+     beschweren. Zuständig für den Verantwortlichen ist:</p>
+  <div class="block">
+    <p><strong>Der Landesbeauftragte für den Datenschutz und die
+       Informationsfreiheit Baden-Württemberg</strong></p>
+    <p>Lautenschlagerstraße 20, 70173 Stuttgart</p>
+    <p><a href="https://www.baden-wuerttemberg.datenschutz.de" rel="noopener"
+          target="_blank">www.baden-wuerttemberg.datenschutz.de</a></p>
+  </div>
+
+  <footer>
+    <span>RACEDAT · FASTER WITH DATA</span>
+    <span><a href="/impressum">Impressum</a> · <a href="/datenschutz">Datenschutz</a></span>
+  </footer>
+</div>
+<script src="/static/legal_data.js"></script>
+</body>
+</html>

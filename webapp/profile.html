@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Profil · Racedat</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a; --bg-2:#141414; --bg-3:#1c1c1c;
+  --ink:#f5f5f0; --ink-dim:#a0a0a0; --ink-faint:#888;
+  --line:#262626;
+  --a-color:#ff3d00; --b-color:#00d4ff;
+  --accent:#00d4ff;
+  --accent-2:#c77dff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',sans-serif;line-height:1.5;min-height:100vh}
+.mono{font-family:'JetBrains Mono',monospace;font-feature-settings:'tnum'}
+.page{max-width:1100px;margin:0 auto;padding:32px 32px 80px}
+
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--ink-dim);text-transform:uppercase;margin-bottom:16px}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5vw,56px);line-height:.9;letter-spacing:.01em;background:linear-gradient(180deg,var(--ink) 0%,#888 100%);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:8px}
+.subtitle{color:var(--ink-dim);font-size:14px;line-height:1.6;max-width:640px;margin-bottom:32px}
+
+.flash{
+  background:#0a2128;border-left:3px solid var(--accent);
+  padding:12px 18px;margin-bottom:24px;font-family:'JetBrains Mono',monospace;
+  font-size:12px;color:var(--ink);letter-spacing:.05em;
+}
+.flash.error{background:#2a0a05;border-left-color:var(--a-color)}
+
+.section-title{margin:32px 0 16px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:10px}
+.section-title h2{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.02em;color:var(--ink)}
+.section-title .num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);letter-spacing:.15em}
+
+/* Profile card (driver name + photo) */
+.profile-card{
+  display:grid;grid-template-columns:140px 1fr;gap:24px;
+  background:var(--bg-2);border:1px solid var(--line);
+  padding:24px;align-items:start;
+}
+.profile-img-wrap{display:flex;align-items:center;justify-content:center}
+.profile-img{
+  width:140px;height:140px;object-fit:cover;
+  background:var(--bg-3);border:1px solid var(--line);
+}
+.profile-img.placeholder{
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--ink-faint);
+}
+.bike-img.placeholder{
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--ink-faint);
+}
+
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-faint);letter-spacing:.15em;text-transform:uppercase}
+.field input[type="text"], .field input[type="email"], .field input[type="file"]{
+  background:var(--bg-3);border:1px solid var(--line);
+  color:var(--ink);font-family:'Space Grotesk',sans-serif;font-size:14px;
+  padding:9px 12px;outline:none;
+}
+.field input[type="text"]:focus, .field input[type="email"]:focus{border-color:var(--accent)}
+.field input[type="file"]{padding:7px 10px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-dim)}
+.field .hint{color:var(--ink-faint);font-size:11px;font-family:'JetBrains Mono',monospace}
+
+.btn{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.05em;background:var(--accent);color:#000;border:none;padding:10px 22px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+.btn:hover{background:#1ee4ff}
+.btn.small{font-size:13px;padding:6px 14px;letter-spacing:.1em;font-family:'JetBrains Mono',monospace;text-transform:uppercase;font-weight:500}
+.btn.secondary{background:transparent;color:var(--ink-dim);border:1px solid var(--line)}
+.btn.secondary:hover{color:var(--ink);border-color:var(--ink)}
+.btn.danger{background:transparent;color:var(--a-color);border:1px solid #3a1810}
+.btn.danger:hover{background:var(--a-color);color:#000;border-color:var(--a-color)}
+
+.submit-row{margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+
+/* Bikes grid */
+.bikes-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px}
+.bike-card{
+  display:grid;grid-template-columns:120px 1fr;gap:18px;
+  background:var(--bg-2);border:1px solid var(--line);
+  padding:18px;align-items:start;
+}
+.bike-card.is-current{border-left:3px solid var(--accent-2)}
+.bike-img-wrap{display:flex;align-items:center;justify-content:center}
+.bike-img{
+  width:120px;height:120px;object-fit:cover;
+  background:var(--bg-3);border:1px solid var(--line);
+}
+.bike-meta{min-width:0}
+.bike-name{
+  font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--ink);
+  letter-spacing:.02em;margin-bottom:10px;
+  word-break:break-word;
+}
+.current-badge{
+  display:inline-block;font-family:'JetBrains Mono',monospace;
+  font-size:9px;letter-spacing:.15em;
+  background:var(--accent-2);color:#000;padding:2px 8px;
+  margin-left:8px;vertical-align:middle;
+}
+.bike-edit-form{margin-bottom:10px}
+.bike-edit-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.bike-edit-row input[type="text"]{flex:1;min-width:140px}
+.bike-edit-row input[type="file"]{flex:1;min-width:140px}
+.bike-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Add-bike form */
+.add-bike-form{
+  background:var(--bg-2);border:1px solid var(--line);
+  padding:18px;display:grid;grid-template-columns:1fr 1fr auto;gap:12px;
+  align-items:end;
+}
+.add-bike-form .field{margin-bottom:0}
+.add-bike-form .submit-cell{display:flex;align-items:center}
+@media (max-width:760px){
+  .add-bike-form{grid-template-columns:1fr}
+  .profile-card{grid-template-columns:1fr;text-align:center}
+  .profile-img-wrap{justify-content:center}
+}
+/* v23.16 — Phone-Stufe */
+@media (max-width:520px){
+  .page{padding:24px 16px 64px}
+  .field input[type="text"], .field input[type="email"]{font-size:16px}
+}
+
+.empty-state{
+  background:var(--bg-2);border:1px dashed var(--line);
+  padding:32px;text-align:center;
+}
+.empty-state .icon{font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--ink-faint);margin-bottom:8px}
+.empty-state .label{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--ink);letter-spacing:.02em;margin-bottom:8px}
+.empty-state .hint{color:var(--ink-dim);font-size:13px;line-height:1.5;max-width:480px;margin:0 auto}
+
+/* Quick-link to user's own laps */
+.my-laps-link{
+  display:flex;justify-content:space-between;align-items:center;
+  background:var(--bg-2);border:1px solid var(--line);
+  border-left:3px solid var(--accent);
+  padding:16px 22px;margin-top:24px;
+  text-decoration:none;color:inherit;
+  transition:border-color .15s, background .15s;
+}
+.my-laps-link:hover{border-color:var(--accent);background:#0e1518}
+.my-laps-link .label{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.02em;color:var(--ink)}
+.my-laps-link .desc{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-dim);letter-spacing:.1em;margin-top:4px}
+.my-laps-link .arrow{font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--accent)}
+
+/* v23.1 — Bestzeiten-Tabelle pro Strecke. Eine Zeile pro Strecke,
+   anklickbar → /analyze?lap_id=<id>. Optisch ruhig (kein Highlight-
+   Akzent von links), damit es nicht mit dem .my-laps-link konkurriert. */
+.best-laps{
+  display:flex;flex-direction:column;
+  background:var(--bg-2);border:1px solid var(--line);
+}
+.best-laps .bl-row{
+  display:grid;grid-template-columns:28px 1fr auto 24px;gap:16px;
+  align-items:center;
+  padding:12px 18px;border-bottom:1px solid var(--line);
+  text-decoration:none;color:inherit;
+  transition:background .15s;
+}
+.best-laps .bl-row:last-child{border-bottom:none}
+.best-laps .bl-row:hover{background:var(--bg-3)}
+.best-laps .bl-medal{
+  display:flex;align-items:center;justify-content:center;
+  width:28px;height:18px;
+}
+.best-laps .bl-medal:empty{visibility:hidden}
+.best-laps .bl-track{
+  font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.02em;
+  color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.best-laps .bl-time{
+  font-family:'JetBrains Mono',monospace;font-feature-settings:'tnum';
+  font-size:16px;color:var(--accent);font-weight:500;
+}
+.best-laps .bl-arrow{
+  font-family:'JetBrains Mono',monospace;font-size:16px;
+  color:var(--ink-faint);text-align:right;
+}
+.best-laps .bl-row:hover .bl-arrow{color:var(--accent)}
+@media (max-width:600px){
+  .best-laps .bl-row{grid-template-columns:24px 1fr auto 20px;gap:10px}
+}
+
+footer{margin-top:80px;padding-top:32px;border-top:1px solid var(--line);color:var(--ink-faint);font-family:'JetBrains Mono',monospace;font-size:11px;display:flex;justify-content:space-between;letter-spacing:.05em;flex-wrap:wrap;gap:16px}
+</style>
+</head>
+<body>
+{{HEADER}}
+<div class="page">
+
+  {{FLASH}}
+
+  <div class="eyebrow">Konto</div>
+  <h1>PROFIL</h1>
+  <div class="subtitle">
+    Fahrername und Motorräder verwalten. Diese Daten belegen das
+    Upload-Formular automatisch vor — bei mehreren Motorrädern wird das
+    "aktuelle" verwendet. Bilder sind optional.
+  </div>
+
+  <div class="section-title">
+    <h2>FAHRER</h2>
+    <span class="num">{{EMAIL}}</span>
+  </div>
+
+  <form method="POST" action="/profile/save" enctype="multipart/form-data">
+    <div class="profile-card">
+      <div class="profile-img-wrap">{{DRIVER_IMG}}</div>
+      <div>
+        <div class="field">
+          <label>FAHRERNAME</label>
+          <input type="text" name="driver_name" value="{{DRIVER_NAME}}" maxlength="200" placeholder="z.B. Stefan">
+          <span class="hint">Wird in der Rundenliste angezeigt und ist Filter-Kriterium.</span>
+        </div>
+        <div class="field">
+          <label>FAHRERFOTO (OPTIONAL)</label>
+          <input type="file" name="image" accept=".jpg,.jpeg,.png,.webp">
+          <span class="hint">JPG · PNG · WEBP · max 5 MB. Leer lassen, um das bestehende Bild zu behalten.</span>
+        </div>
+        <div class="submit-row">
+          <button type="submit" class="btn">SPEICHERN</button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="section-title">
+    <h2>MOTORRÄDER</h2>
+    <span class="num">EINES KANN ALS "AKTUELL" MARKIERT WERDEN</span>
+  </div>
+
+  {{BIKES_HTML}}
+
+  <div style="margin-top:20px">
+    <div class="section-title" style="margin-top:0">
+      <h2 style="font-size:18px">NEUES MOTORRAD</h2>
+      <span class="num">NAME UND OPTIONAL EIN BILD</span>
+    </div>
+    <form method="POST" action="/profile/bike/add" enctype="multipart/form-data" class="add-bike-form">
+      <div class="field">
+        <label>NAME</label>
+        <input type="text" name="name" maxlength="200" required placeholder="z.B. CBR 1000 RR">
+      </div>
+      <div class="field">
+        <label>BILD (OPTIONAL)</label>
+        <input type="file" name="image" accept=".jpg,.jpeg,.png,.webp">
+      </div>
+      <div class="submit-cell">
+        <button type="submit" class="btn">HINZUFÜGEN</button>
+      </div>
+    </form>
+  </div>
+
+  <a href="/sessions?mine=1" class="my-laps-link">
+    <div>
+      <div class="label">EIGENE RUNDEN ({{MY_LAP_COUNT}})</div>
+      <div class="desc">RUNDENLISTE · GEFILTERT AUF EIGENE</div>
+    </div>
+    <div class="arrow">→</div>
+  </a>
+
+  <div class="section-title">
+    <h2>BESTZEITEN</h2>
+    <span class="num">SCHNELLSTE RUNDE PRO STRECKE</span>
+  </div>
+  {{BEST_LAPS_HTML}}
+
+  <footer>
+    <span>RACEDAT · FASTER WITH DATA</span>
+    <span><a href="/impressum" style="color:inherit;text-decoration:none">Impressum</a> · <a href="/datenschutz" style="color:inherit;text-decoration:none">Datenschutz</a></span>
+    <span>{{NOW}}</span>
+  </footer>
+</div>
+</body>
+</html>

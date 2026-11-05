@@ -1,0 +1,143 @@
+{
+  "_comment": "Detector thresholds for the AI Coach analyses. Stefan-edited. Server-Restart nach Änderungen.",
+  "_comment2": "Falls die Datei fehlt oder defekt ist, greifen die in Coach hartkodierten Fallback-Werte (= identisch zu diesen Defaults).",
+
+  "brake": {
+    "_about": "Bremsanalyse — detektiert Bremszonen und bewertet Aufbau, Trail-Braking, Smoothness, Apex-Treffen.",
+    "zone_threshold_fraction": 0.05,
+    "_zone_threshold_fraction": "Bremsdruck > X * peakAll = innerhalb einer Bremszone (default 5% des Lap-Peaks).",
+    "zone_min_samples": 8,
+    "_zone_min_samples": "Mindestlänge einer Bremszone in Samples (~80ms bei 100Hz).",
+    "build_low_frac": 0.10,
+    "build_high_frac": 0.90,
+    "_build_fracs": "10%-90% Range für die Bremsaufbau-Zeit-Messung.",
+    "build_good_seconds": 0.30,
+    "build_warn_seconds": 0.60,
+    "_build_scores": "Aufbau < good_seconds = grün, < warn_seconds = orange, sonst rot.",
+    "trail_corr_good": 0.4,
+    "trail_corr_warn": 0.1,
+    "_trail_corr": "Pearson-Korrelation |lean| ↔ -pressure im Abbau. > good = sauberes Trail-Braking, > warn = okay.",
+    "smooth_pump_threshold_frac": 0.10,
+    "_smooth_pump_threshold_frac": "Druck steigt > X * peakLocal nach Trough = ein Pumpen-Event.",
+    "apex_release_low_frac": 0.10,
+    "apex_release_min_seconds": 0.2,
+    "_apex_release": "Druck < low_frac für > min_seconds VOR dem Apex = 'Bremse zu früh gelöst'.",
+    "apex_release_requires_prior_peak_frac": 0.50,
+    "_apex_release_requires_prior_peak_frac": "Davor muss schonmal > X * peakLocal erreicht worden sein, damit Anfangs-Phase ohne Druck nicht als Fehler zählt.",
+    "apex_search_distance_m": 200,
+    "_apex_search_distance_m": "Apex muss bis X m hinter Brems-Ende liegen damit er der Zone zugeordnet wird."
+  },
+
+  "accel": {
+    "_about": "Beschleunigungsanalyse — bewertet Apex→Vollgas-Zeit, Aufzieh-Smoothness, Vollgas-Anteil auf Geraden.",
+    "phase_max_distance_m": 800,
+    "_phase_max_distance_m": "Maximale Länge einer Beschleunigungsphase nach dem Apex.",
+    "phase_min_samples": 10,
+    "_phase_min_samples": "Mindest-Sample-Anzahl pro Phase.",
+    "sharp_drop_lookback_samples": 10,
+    "sharp_drop_recent_max_min": 30,
+    "sharp_drop_amount": 30,
+    "_sharp_drop": "Gasgriff-Drop > sharp_drop_amount innerhalb sharp_drop_lookback_samples = Anbremsen erkannt (Phase-Ende).",
+    "full_throttle_threshold": 95,
+    "_full_throttle_threshold": "Gasgriff >= X% gilt als Vollgas.",
+    "ramp_good_seconds": 1.0,
+    "ramp_warn_seconds": 2.0,
+    "_ramp_scores": "Apex bis erstes Vollgas < good_seconds = grün, < warn_seconds = orange.",
+    "smooth_min_running_max": 20,
+    "smooth_pump_drop_amount": 10,
+    "_smooth": "Im Anstieg: wenn runningMax >= smooth_min_running_max und Wert fällt um > pump_drop_amount = Pumpen-Drop.",
+    "straight_lean_max_deg": 10,
+    "_straight_lean_max_deg": "|lean| < X° gilt als gerade.",
+    "straight_min_samples": 5,
+    "_straight_min_samples": "Mindestens X Samples gerade in der Phase, damit die Vollgas-Anteils-Bewertung greift.",
+    "straight_good_pct": 0.80,
+    "straight_warn_pct": 0.50,
+    "_straight_pcts": "Vollgas-Anteil-auf-Geraden > good = grün, > warn = orange.",
+    "error_marker_throttle_max": 90,
+    "error_marker_min_seconds": 0.3,
+    "_error_marker": "Lean < straight_lean_max_deg, Gasgriff < error_marker_throttle_max, Dauer > error_marker_min_seconds = Trackmap-Fehlermarker."
+  },
+
+  "electronics": {
+    "_about": "Elektronik-Setup-Analyse — Wheelspeed-Slip, Hinterrad-Spike, Oszillation, TC/WC-Eingriffe.",
+
+    "slip_ratio": 0.10,
+    "_slip_ratio": "|Vr-Vf| / max(Vf,Vr,5) > X = Slip-/Lockup-Event.",
+    "slip_min_seconds": 0.10,
+    "slip_gap_seconds": 0.05,
+    "slip_min_ref_speed": 5,
+    "_slip_min_ref_speed": "Vref-Floor — unter X bei stillstandsnaher Speed nicht alarmieren.",
+
+    "spike_window_seconds": 0.15,
+    "spike_rate_threshold": 30,
+    "_spike_rate_threshold": "dV/dt > X Einheiten/s = Spike.",
+    "spike_continue_rate": 15,
+    "_spike_continue_rate": "Phase wird erweitert solange Rate > continue_rate.",
+    "spike_merge_seconds": 0.5,
+    "_spike_merge_seconds": "Spikes näher als X Sekunden werden zu einem Event gemerged.",
+
+    "osc_window_seconds": 0.25,
+    "_osc_window_seconds": "Rolling-Window für std/mean-Berechnung.",
+    "osc_min_mean": 5,
+    "_osc_min_mean": "Bei Speed < X wird Sample ignoriert (Stillstand).",
+    "osc_threshold": 0.05,
+    "_osc_threshold": "std/|mean| > X für osc_min_seconds = Oszillations-Event.",
+    "osc_min_seconds": 0.30,
+    "osc_gap_seconds": 0.10,
+
+    "status_deviation": 0.5,
+    "_status_deviation": "|status - rest| > X = TC/WC-Eingriff aktiv.",
+    "status_min_seconds": 0.05,
+    "status_gap_seconds": 0.10
+  },
+
+  "suspension_block": {
+    "_about": "Fahrwerks-Setup: Block-Detektor (flache Linie am Federweg-Maximum mit scharfer Kante davor).",
+    "top_band_frac": 0.01,
+    "_top_band_frac": "Wert > rangeMax - X*range = im oberen Band.",
+    "plateau_flat_frac": 0.005,
+    "_plateau_flat_frac": "Werte-Spannweite im Plateau ≤ X*range = flach.",
+    "plateau_min_seconds": 0.040,
+    "_plateau_min_seconds": "Mindestdauer des Plateaus.",
+    "gap_seconds": 0.020,
+    "_gap_seconds": "Kleine Lücken bis X Sekunden werden im Plateau gemerged.",
+    "edge_window_seconds": 0.060,
+    "_edge_window_seconds": "Fenster vor Plateaubeginn, in dem der Anstieg gemessen wird.",
+    "edge_rise_frac": 0.20,
+    "_edge_rise_frac": "Anstieg im Edge-Fenster muss >= X*range betragen (scharfe Kante)."
+  },
+
+  "suspension_topout": {
+    "_about": "Fahrwerks-Setup: Top-Out-Detektor (flache Linie am Federweg-Minimum mit steilem Abfall davor). Spiegelbild von suspension_block.",
+    "bottom_band_frac": 0.01,
+    "_bottom_band_frac": "Wert < rangeMin + X*range = im unteren Band.",
+    "plateau_flat_frac": 0.005,
+    "plateau_min_seconds": 0.040,
+    "gap_seconds": 0.020,
+    "edge_window_seconds": 0.060,
+    "edge_drop_frac": 0.20,
+    "_edge_drop_frac": "Abfall im Edge-Fenster muss >= X*range betragen."
+  },
+
+  "suspension_bump": {
+    "_about": "Fahrwerks-Setup: Bump-Detektor (einzelner kurzer Spike in der Federweg-Geschwindigkeit).",
+    "k_mad": 6.0,
+    "_k_mad": "Schwelle = max(k_mad * MAD, safety_floor_mm_s). MAD ist Median Absolute Deviation der Federweg-Geschwindigkeit.",
+    "safety_floor_mm_s": 200,
+    "_safety_floor_mm_s": "Untere Schranke, damit bei sehr ruhigen Sessions normale Federbewegung nicht als Bump zählt.",
+    "max_duration_seconds": 0.100,
+    "_max_duration_seconds": "Spike darf maximal X s über der Schwelle sein (sonst Federbewegung, kein Schlag).",
+    "merge_gap_seconds": 0.050,
+    "_merge_gap_seconds": "Spikes näher als X s werden zu einem Event gemerged."
+  },
+
+  "suspension_histogram": {
+    "_about": "Fahrwerks-Setup: Federweg-Geschwindigkeits-Histogramm.",
+    "num_bins": 41,
+    "_num_bins": "Anzahl Bins (symmetrisch um 0, ungerade Zahl = zentraler Bin um v=0).",
+    "outlier_quantile": 0.995,
+    "_outlier_quantile": "Range = absMax bei diesem Quantil — trimmt einzelne Spike-Ausreißer.",
+    "safety_floor_frac": 0.1,
+    "_safety_floor_frac": "min(range, absMax * X) — verhindert dass die Skala bei fast-konstanten Daten auf Mikrobereiche schrumpft."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "maptiler_key": "",
+
+  "base_url": "https://racedat.de",
+
+  "smtp": {
+    "host": "smtp-relay.brevo.com",
+    "port": 587,
+    "login": "9xxxxx001@smtp-brevo.com",
+    "password": "xkeysib-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "sender_email": "no-reply@racedat.deine-domain.de",
+    "sender_name": "Racedat"
+  }
+}

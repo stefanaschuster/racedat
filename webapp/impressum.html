@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Impressum · Racedat</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a; --bg-2:#141414;
+  --ink:#f5f5f0; --ink-dim:#a0a0a0; --ink-faint:#888;
+  --line:#262626;
+  --a-color:#ff3d00; --accent:#00d4ff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',sans-serif;line-height:1.6;min-height:100vh}
+.page{max-width:720px;margin:0 auto;padding:48px 32px 80px}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--ink-dim);text-transform:uppercase;margin-bottom:16px}
+h1{font-family:'Bebas Neue',sans-serif;font-size:48px;line-height:.9;letter-spacing:.01em;margin-bottom:32px}
+h2{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.03em;margin:32px 0 12px;color:var(--accent)}
+p{color:var(--ink-dim);font-size:14px;margin-bottom:12px}
+p strong{color:var(--ink)}
+a{color:var(--accent)}
+.block{background:var(--bg-2);border-left:3px solid var(--accent);padding:20px 24px;margin-bottom:24px}
+.block p{margin-bottom:4px}
+footer{margin-top:48px;padding-top:24px;border-top:1px solid var(--line);color:var(--ink-faint);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.05em;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+footer a{color:var(--ink-faint);text-decoration:none}
+footer a:hover{color:var(--accent)}
+
+@media (max-width:600px){
+  .page{padding:32px 16px 48px}
+  h1{font-size:34px}
+  h2{font-size:20px}
+  .block{padding:16px}
+}
+</style>
+</head>
+<body>
+{{HEADER}}
+<div class="page">
+  <div class="eyebrow">Rechtliches</div>
+  <h1>IMPRESSUM</h1>
+
+  <h2>Angaben gemäß § 5 DDG</h2>
+  <div class="block">
+    <p><strong data-legal="name">…</strong></p>
+    <p data-legal="strasse">…</p>
+    <p data-legal="plzOrt">…</p>
+  </div>
+
+  <h2>Kontakt</h2>
+  <div class="block">
+    <p>E-Mail: <a data-legal-mailto href="#">…</a></p>
+    <p data-legal-row><span>Telefon: </span><span data-legal="telefon"></span></p>
+  </div>
+
+  <h2>Art des Angebots</h2>
+  <p data-legal="betriebsart">…</p>
+
+  <h2>Verantwortlich für den Inhalt</h2>
+  <p><span data-legal="name">…</span>, Anschrift wie oben.</p>
+
+  <h2>Haftung für Inhalte</h2>
+  <p>Die Inhalte dieser Seiten wurden mit Sorgfalt erstellt. Für Richtigkeit,
+     Vollständigkeit und Aktualität der Inhalte wird jedoch keine Gewähr
+     übernommen. Nutzerinnen und Nutzer können eigene Inhalte (Sessions,
+     Rundendaten, Profil- und Motorradbilder) hochladen; für diese Inhalte
+     sind die jeweiligen Nutzer verantwortlich. Rechtswidrige Inhalte werden
+     nach Kenntnisnahme entfernt — Hinweise gern an die oben genannte
+     E-Mail-Adresse.</p>
+
+  <h2>Haftung für Links</h2>
+  <p>Diese Seite kann Links zu externen Websites Dritter enthalten, auf deren
+     Inhalte kein Einfluss besteht. Für die Inhalte der verlinkten Seiten ist
+     stets der jeweilige Anbieter verantwortlich.</p>
+
+  <footer>
+    <span>RACEDAT · FASTER WITH DATA</span>
+    <span><a href="/impressum">Impressum</a> · <a href="/datenschutz">Datenschutz</a></span>
+  </footer>
+</div>
+<script src="/static/legal_data.js"></script>
+</body>
+</html>

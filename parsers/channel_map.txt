@@ -1,0 +1,12 @@
+Standardkanal		Datenkanal
+
+Schräglage		phi_lean, Lean_Angle, Bike_Angle, LeanAngle, Bank_abs
+Bremsdruck		p_brake_fr, BrakePressureFr, Brake_Front, FBrakeDriverPres
+Gasgriff		tpd, ACP_100, Twist_grip, ThrottleGrip, Grip_pos
+Drosselklappe		tp_1, Throttle, TPS_Vert, ThrottleV
+Drehzahl Vorderrad	v_front, Fr_Speed, Speed_Front, V_Front
+Drehzahl Hinterrad	v_rear, Rr_Speed, Speed_Rear, V_Rear
+Status TC		Trq_red, DTCwork, Re_dtc_tot
+Status WC		md_tgt_whly, Wheely_active
+Federweg Gabel		s_susp_fr,ACC_SuspTravel_F, SUSF, Travel_Front, Susp_fr_ddc
+Federweg Federbein	s_susp_rr,ACC_SuspTravel_R, SUSR, Travel_Rear, Susp_rr_ddc

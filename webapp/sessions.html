@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Runden · Racedat</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a; --bg-2:#141414;
+  --ink:#f5f5f0; --ink-dim:#a0a0a0; --ink-faint:#888;
+  --line:#262626;
+  --a-color:#ff3d00; --b-color:#00d4ff;
+  --accent:#00d4ff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',sans-serif;line-height:1.5;min-height:100vh}
+.mono{font-family:'JetBrains Mono',monospace;font-feature-settings:'tnum'}
+.page{max-width:1280px;margin:0 auto;padding:48px 32px 80px}
+
+
+
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--ink-dim);text-transform:uppercase;margin-bottom:16px}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5vw,56px);line-height:.9;letter-spacing:.01em;background:linear-gradient(180deg,var(--ink) 0%,#888 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.subtitle{color:var(--ink-dim);font-size:14px;margin-top:12px;max-width:520px;line-height:1.6}
+
+.filter-bar{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;
+  background:var(--bg-2);border:1px solid var(--line);
+  padding:20px;margin:32px 0 24px;
+}
+.filter-bar .field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.filter-bar label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-faint);letter-spacing:.15em;text-transform:uppercase}
+.filter-bar input, .filter-bar select{
+  background:var(--bg);border:1px solid var(--line);color:var(--ink);
+  font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 10px;outline:none;
+  min-width:0;
+}
+.filter-bar input:focus, .filter-bar select:focus{border-color:var(--accent)}
+.filter-bar .field.span2{grid-column:span 2}
+.filter-bar .field.action-field .btn{display:block;text-align:center;padding:7px 10px;font-size:13px}
+/* v22.12 — "Eigene Runden"-Toggle: kleine Checkbox-Pille im Filterbalken.
+   Sichtbar nur für eingeloggte User (CSS-Klasse .mine-toggle wird mit
+   data-logged-in gegated, siehe Body-Block). */
+.filter-bar .field.mine-toggle{
+  flex-direction:row;align-items:center;gap:8px;
+}
+.filter-bar .field.mine-toggle label{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--ink-dim);letter-spacing:.1em;cursor:pointer;
+  display:flex;align-items:center;gap:8px;text-transform:uppercase;
+}
+.filter-bar .field.mine-toggle input[type="checkbox"]{
+  width:16px;height:16px;accent-color:var(--accent);cursor:pointer;
+  margin:0;
+}
+.filter-bar[data-logged-in="0"] .mine-toggle{display:none}
+.btn{
+  font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.05em;
+  background:var(--accent);color:#000;border:none;padding:12px 24px;
+  cursor:pointer;text-decoration:none;display:inline-block;
+}
+.btn:hover{background:#1ee4ff}
+.btn.small{font-size:13px;padding:8px 14px;letter-spacing:.05em;font-family:'JetBrains Mono',monospace}
+.btn.secondary{background:var(--bg-2);color:var(--ink);border:1px solid var(--line)}
+.btn.secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn.danger{background:transparent;color:var(--a-color);border:1px solid var(--a-color);font-size:11px;padding:6px 12px;letter-spacing:.15em}
+.btn.danger:hover{background:var(--a-color);color:#000}
+/* v21.16 — Edit-Meta-Button — gleiche Größe wie danger,
+   aber neutral, damit der "✎" sich vom roten "×" abhebt. */
+.btn.edit-meta-btn{
+  background:transparent;color:var(--ink-dim);border:1px solid var(--line);
+  font-size:13px;padding:5px 10px;letter-spacing:0;font-family:'Space Grotesk',sans-serif;
+  line-height:1;cursor:pointer;
+}
+.btn.edit-meta-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* v21.16 — Modal Overlay für Session-Meta-Editor */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);
+  display:none;align-items:center;justify-content:center;z-index:1000;
+  padding:24px;
+}
+.modal-backdrop.active{display:flex}
+.modal{
+  background:var(--bg-2);border:1px solid var(--line);
+  width:100%;max-width:560px;max-height:90vh;overflow:auto;
+  padding:28px 28px 24px;
+}
+.modal h2{
+  font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.02em;
+  color:var(--ink);margin-bottom:4px;
+}
+.modal .modal-eyebrow{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  letter-spacing:.2em;color:var(--ink-faint);text-transform:uppercase;
+  margin-bottom:12px;
+}
+.modal .modal-hint{
+  color:var(--ink-dim);font-size:12px;font-family:'JetBrains Mono',monospace;
+  letter-spacing:.05em;margin-bottom:20px;line-height:1.5;
+}
+.modal .modal-error{
+  background:#2a0a05;border-left:3px solid var(--a-color);
+  padding:10px 14px;margin-bottom:16px;
+  font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink);
+  display:none;
+}
+.modal .modal-error.active{display:block}
+.modal .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.modal .field label{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--ink-faint);letter-spacing:.15em;text-transform:uppercase;
+}
+.modal .field input, .modal .field textarea{
+  background:var(--bg);border:1px solid var(--line);color:var(--ink);
+  font-family:'JetBrains Mono',monospace;font-size:13px;padding:9px 11px;
+  outline:none;width:100%;
+}
+.modal .field input:focus, .modal .field textarea:focus{border-color:var(--accent)}
+.modal .field textarea{resize:vertical;min-height:80px;line-height:1.5}
+.modal .modal-actions{
+  display:flex;justify-content:flex-end;gap:10px;margin-top:8px;
+}
+
+/* v21.35 — Kanal-Zuordnung im Edit-Modal (Admin) */
+.em-roles-block{margin-top:8px;margin-bottom:16px}
+.em-roles-divider{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  letter-spacing:.2em;color:var(--ink-faint);text-transform:uppercase;
+  padding-top:14px;border-top:1px solid var(--line);margin-bottom:10px;
+}
+.em-roles-status{
+  color:var(--ink-faint);font-size:11px;font-family:'JetBrains Mono',monospace;
+  padding:8px 0;
+}
+.em-roles-status.hidden{display:none}
+.em-roles-grid{display:flex;flex-direction:column;gap:12px}
+.em-role-row{display:flex;flex-direction:column;gap:4px}
+.em-role-row label{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--ink-faint);letter-spacing:.15em;text-transform:uppercase;
+}
+.em-role-row select{
+  background:var(--bg);border:1px solid var(--line);color:var(--ink);
+  font-family:'JetBrains Mono',monospace;font-size:13px;padding:9px 11px;
+  outline:none;width:100%;
+}
+.em-role-row select:focus{border-color:var(--accent)}
+.em-role-row .em-role-desc{
+  color:var(--ink-dim);font-size:10.5px;font-family:'JetBrains Mono',monospace;
+  letter-spacing:.04em;
+}
+/* v21.44 — .em-role-suggest entfernt, Vorschlag steht jetzt direkt im <select> */
+
+.session-list{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--line)}
+.session-row{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 160px 60px;gap:16px;
+  align-items:center;padding:18px 0;border-bottom:1px solid var(--line);
+}
+.session-row .col-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.session-row .col-meta .k{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-faint);letter-spacing:.15em;text-transform:uppercase}
+.session-row .col-meta .v{font-size:14px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.session-row .col-meta .v.sub{font-size:11px;color:var(--ink-dim)}
+.session-row .col-meta .v.mono{font-family:'JetBrains Mono',monospace}
+.session-row .col-meta .v.dim{color:var(--ink-dim);font-style:italic}
+/* v23.0 — Owner-Link ist klickbar → /profile/<id>. Optisch wie der
+   restliche dim-Subtext (.v.sub), nur mit Underline-on-hover statt
+   default-blau, damit die Zeilen ruhig bleiben. */
+.session-row .col-meta .v.sub .owner-link{
+  color:inherit;text-decoration:none;
+}
+.session-row .col-meta .v.sub .owner-link:hover{
+  color:var(--ink);text-decoration:underline;
+}
+
+/* v22.3/v22.4 — Per-role channel status icons (one inline SVG per role,
+   grey if not assigned for this lap, green if assigned). The SVG uses
+   currentColor so we only set `color:` on the wrapper to switch states.
+   Mouseover shows the role label. Same colour scheme + sizing across
+   all 4 pickers (sessions / Coach / Compare / Datenviewer). */
+.session-row .col-meta .ch-dots{
+  display:inline-flex;gap:5px;margin-top:6px;
+  align-items:center;line-height:1;
+}
+.session-row .col-meta .ch-icon-wrap{
+  display:inline-flex;width:14px;height:14px;line-height:1;
+}
+.session-row .col-meta .ch-icon-wrap .ch-icon{
+  width:14px;height:14px;display:block;
+}
+.session-row .col-meta .ch-icon-wrap.off{color:#6a6a6a}
+.session-row .col-meta .ch-icon-wrap.on {color:#3aff7a}
+.session-row .num{font-family:'JetBrains Mono',monospace;font-feature-settings:'tnum';font-size:14px;color:var(--ink);text-align:right}
+.session-row .num .lap-time-link{text-decoration:none;color:inherit}
+.session-row .num .lap-time{font-size:16px;color:var(--accent);font-weight:500}
+.session-row .num .lap-time-link:hover .lap-time{color:#1ee4ff}
+/* v23.2 — Pokal-Icon links neben der Lap-Time wenn globale Top-3.
+   :empty kollabiert leere Spans → keine Lücke wenn kein Pokal. */
+.session-row .num .lap-medal{
+  display:inline-flex;align-items:center;vertical-align:middle;
+  margin-right:6px;
+}
+.session-row .num .lap-medal:empty{display:none}
+.session-row .num .lap-medal svg{display:block}
+/* v21.9 — Datenviewer-Sub-Link unter der Rundenzeit. Sichtbar als framed
+   text link (kein Button-Background), heller als die übrigen Sub-Werte.
+   v21.32 — zweiter Sublink (VERGLEICH) wird darunter gestapelt; .lap-time-sub
+   bricht via display:block in eigene Zeile, damit beide untereinander stehen. */
+.session-row .num .lap-time-sub{
+  display:block;margin-top:6px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+  color:var(--accent);letter-spacing:.12em;text-decoration:none;
+  border:1px solid var(--line);padding:5px 10px;
+  transition:color .12s,border-color .12s,background .12s;
+}
+.session-row .num .lap-time-sub + .lap-time-sub{margin-top:4px}
+.session-row .num .lap-time-sub:hover{
+  color:#000;background:var(--accent);border-color:var(--accent);
+}
+.session-row .actions{text-align:right;display:flex;gap:8px;justify-content:flex-end}
+
+.empty-state{
+  background:var(--bg-2);border:1px dashed var(--line);
+  padding:64px 32px;text-align:center;margin:48px 0;
+}
+.empty-state .icon{font-family:'Bebas Neue',sans-serif;font-size:64px;color:var(--ink-faint)}
+.empty-state .label{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--ink);margin:16px 0 8px;letter-spacing:.02em}
+.empty-state .hint{color:var(--ink-dim);font-size:13px;margin-bottom:24px;font-family:'JetBrains Mono',monospace;letter-spacing:.05em}
+
+.flash{
+  background:#0a2128;border-left:3px solid var(--accent);
+  padding:12px 20px;margin-bottom:24px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink);
+}
+.flash.error{background:#2a0a05;border-left-color:var(--a-color)}
+
+footer{margin-top:80px;padding-top:32px;border-top:1px solid var(--line);color:var(--ink-faint);font-family:'JetBrains Mono',monospace;font-size:11px;display:flex;justify-content:space-between;letter-spacing:.05em;flex-wrap:wrap;gap:16px}
+
+@media (max-width:880px){
+  .session-row{grid-template-columns:1fr 1fr;gap:8px;padding:16px 0}
+  .session-row .actions{grid-column:1/-1;justify-content:flex-start}
+}
+/* v23.16 — Phone-Stufe: eine Spalte, kompaktere Filter, Modal randlos */
+@media (max-width:520px){
+  .page{padding:24px 16px 64px}
+  .session-row{grid-template-columns:1fr;gap:10px}
+  .session-row .num{text-align:left}
+  .session-row .num .lap-time-sub{display:inline-block;margin-right:6px}
+  .filter-bar{padding:14px;gap:10px;grid-template-columns:1fr 1fr}
+  .filter-bar input,.filter-bar select{font-size:16px}
+  .modal{padding:20px 16px;max-height:calc(100dvh - 32px)}
+}
+</style>
+</head>
+<body>
+{{HEADER}}
+<div class="page">
+
+  {{FLASH}}
+
+  <div class="eyebrow">Runden-Bibliothek</div>
+  <h1>RUNDEN</h1>
+  <div class="subtitle">
+    Runden hochladen, verwalten und durchsuchen.
+    Jede Runde steht für sich — Hochladen, eine Runde auswählen, und sie
+    erscheint in dieser Liste.
+    {{COUNT_TEXT}}
+  </div>
+
+  <div class="filter-bar"
+       data-logged-in="{{LOGGED_IN}}"
+       data-cur-user-id="{{CUR_USER_ID}}"
+       data-mine-default="{{MINE_MODE}}">
+    <div class="field span2">
+      <label>SUCHE</label>
+      <input type="text" id="f-search" placeholder="Fahrer, Bike, Strecke, Datei, Notizen…">
+    </div>
+    <div class="field">
+      <label>FAHRER</label>
+      <select id="f-driver"><option value="">— alle —</option></select>
+    </div>
+    <div class="field">
+      <label>BIKE</label>
+      <select id="f-bike"><option value="">— alle —</option></select>
+    </div>
+    <div class="field">
+      <label>STRECKE</label>
+      <select id="f-track"><option value="">— alle —</option></select>
+    </div>
+    <div class="field mine-toggle">
+      <label><input type="checkbox" id="f-mine"> NUR EIGENE</label>
+    </div>
+    <div class="field action-field">
+      <label>&nbsp;</label>
+      <a href="/sessions/upload" class="btn small">+ RUNDE HOCHLADEN</a>
+    </div>
+  </div>
+
+  {{LIST}}
+
+  <footer>
+    <span>RACEDAT · FASTER WITH DATA</span>
+    <span><a href="/impressum" style="color:inherit;text-decoration:none">Impressum</a> · <a href="/datenschutz" style="color:inherit;text-decoration:none">Datenschutz</a></span>
+    <span>{{NOW}}</span>
+  </footer>
+</div>
+
+<!-- v21.16 — Session-Meta-Editor Modal (v21.37: Owner-or-Admin) -->
+<div id="edit-meta-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="edit-meta-title">
+  <div class="modal">
+    <div class="modal-eyebrow">METADATEN EDITIEREN</div>
+    <h2 id="edit-meta-title">SESSION-META</h2>
+    <div class="modal-hint" id="edit-meta-hint">Änderung gilt für alle Runden dieser Session.</div>
+    <div class="modal-error" id="edit-meta-error"></div>
+    <div class="field">
+      <label for="em-driver">FAHRER</label>
+      <input type="text" id="em-driver" maxlength="200" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="em-bike">BIKE</label>
+      <input type="text" id="em-bike" maxlength="200" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="em-track">STRECKE</label>
+      <input type="text" id="em-track" maxlength="200" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="em-date">DATUM (YYYY-MM-DD)</label>
+      <input type="date" id="em-date">
+    </div>
+    <div class="field">
+      <label for="em-notes">NOTIZEN</label>
+      <textarea id="em-notes" maxlength="5000"></textarea>
+    </div>
+
+    <!-- v21.35 — Kanal-Zuordnung (Admin). Lazy-loaded per fetch nach Modal-Open.
+         Wird ausgeblendet wenn das Lap keine Zusatz-Kanäle hat. -->
+    <div class="em-roles-block" id="em-roles-block">
+      <div class="em-roles-divider">STANDARDKANAL-ZUORDNUNG (FÜR AI-COACH-ANALYSEN)</div>
+      <div class="em-roles-status" id="em-roles-status">Lade Kanäle…</div>
+      <div class="em-roles-grid" id="em-roles-grid"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn small secondary" id="em-cancel">ABBRECHEN</button>
+      <button type="button" class="btn small" id="em-save">SPEICHERN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Populate filter dropdowns from the rendered rows
+const rows = [...document.querySelectorAll('.session-row')];
+function distinctFromRows(attr){
+  const s = new Set();
+  rows.forEach(r => {
+    const v = (r.dataset[attr] || '').trim();
+    if (v && v !== '—') s.add(v);
+  });
+  return [...s].sort((a,b) => a.localeCompare(b));
+}
+function fillSelect(id, values){
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  values.forEach(v => {
+    const o = document.createElement('option'); o.value = v; o.textContent = v;
+    sel.appendChild(o);
+  });
+}
+fillSelect('f-driver', distinctFromRows('driver'));
+fillSelect('f-bike',   distinctFromRows('bike'));
+fillSelect('f-track',  distinctFromRows('track'));
+
+const search = document.getElementById('f-search');
+const dDriver = document.getElementById('f-driver');
+const dBike = document.getElementById('f-bike');
+const dTrack = document.getElementById('f-track');
+// v22.12 — "Nur eigene"-Toggle. Liest data-cur-user-id und matched gegen
+// row.dataset.userId. Checkbox-State wird beim Toggle in die URL gespiegelt
+// (history.replaceState statt push — sonst sammeln sich Filter-Toggle-
+// Einträge im Browser-Back-Stack an).
+const dMine    = document.getElementById('f-mine');
+const filterBar = document.querySelector('.filter-bar');
+const curUserId = filterBar ? (filterBar.dataset.curUserId || '') : '';
+if (dMine && filterBar && filterBar.dataset.mineDefault === '1') {
+  dMine.checked = true;
+}
+
+function applyFilter(){
+  const q = (search.value || '').toLowerCase();
+  const wDriver = dDriver.value;
+  const wBike = dBike.value;
+  const wTrack = dTrack.value;
+  const onlyMine = dMine && dMine.checked && curUserId;
+  rows.forEach(row => {
+    const driver = (row.dataset.driver || '').trim();
+    const bike = (row.dataset.bike || '').trim();
+    const track = (row.dataset.track || '').trim();
+    const userId = (row.dataset.userId || '').trim();
+    const text = row.textContent.toLowerCase();
+    let show = true;
+    if (q && !text.includes(q)) show = false;
+    if (wDriver && driver !== wDriver) show = false;
+    if (wBike && bike !== wBike) show = false;
+    if (wTrack && track !== wTrack) show = false;
+    if (onlyMine && userId !== curUserId) show = false;
+    row.style.display = show ? '' : 'none';
+  });
+}
+[search, dDriver, dBike, dTrack].forEach(el => el && el.addEventListener('input', applyFilter));
+[dDriver, dBike, dTrack].forEach(el => el && el.addEventListener('change', applyFilter));
+if (dMine) {
+  dMine.addEventListener('change', () => {
+    applyFilter();
+    // URL ?mine=1 spiegeln/entfernen, damit ein Reload den State erhält
+    // und ein Link aus dem Profil weiterhin "?mine=1" als Eingang nutzt.
+    try {
+      const u = new URL(window.location.href);
+      if (dMine.checked) u.searchParams.set('mine', '1');
+      else u.searchParams.delete('mine');
+      window.history.replaceState({}, '', u.toString());
+    } catch (e) { /* IE etc. — wir scheitern still */ }
+  });
+}
+// Initial pass — falls die Default-Checkbox an war (mine=1), gleich filtern.
+applyFilter();
+
+// v21.16 — Session-Meta-Editor. v21.37: für Owner und Admins.
+// Modal-Felder werden aus data-* Attributen des Edit-Buttons befüllt.
+// Auf SPEICHERN: POST /sessions/<id>/edit (urlencoded), bei Erfolg reload.
+// v21.35: Modal lädt zusätzlich die Kanal-Zuordnung für das ausgewählte
+// Lap und speichert beide (Session-Meta + Lap-Channel-Roles) parallel.
+(function(){
+  const modal     = document.getElementById('edit-meta-modal');
+  if (!modal) return;  // no buttons rendered for this user → nothing to wire
+  const errBox    = document.getElementById('edit-meta-error');
+  const hintBox   = document.getElementById('edit-meta-hint');
+  const fDriver   = document.getElementById('em-driver');
+  const fBike     = document.getElementById('em-bike');
+  const fTrack    = document.getElementById('em-track');
+  const fDate     = document.getElementById('em-date');
+  const fNotes    = document.getElementById('em-notes');
+  const btnCancel = document.getElementById('em-cancel');
+  const btnSave   = document.getElementById('em-save');
+  // v21.35 — Channel-roles section
+  const rolesBlock  = document.getElementById('em-roles-block');
+  const rolesStatus = document.getElementById('em-roles-status');
+  const rolesGrid   = document.getElementById('em-roles-grid');
+  let currentSessionId = null;
+  let currentLapId     = null;
+  let rolesRegistry    = null;  // last fetched registry for this lap
+  let rolesLoaded      = false;
+
+  function rolesReset(){
+    rolesGrid.innerHTML = '';
+    rolesStatus.classList.remove('hidden');
+    rolesStatus.textContent = 'Lade Kanäle…';
+    rolesRegistry = null;
+    rolesLoaded = false;
+    rolesBlock.style.display = '';
+  }
+  async function rolesLoad(lapId){
+    if (!lapId) {
+      rolesBlock.style.display = 'none';
+      return;
+    }
+    try {
+      const resp = await fetch('/api/laps/' + encodeURIComponent(lapId) + '/channel-roles', {
+        credentials: 'same-origin',
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data.ok) {
+        rolesStatus.textContent = data.error || ('Laden fehlgeschlagen (HTTP ' + resp.status + ').');
+        return;
+      }
+      const available = data.available_channels || [];
+      const registry  = data.registry || [];
+      const current   = data.channel_roles || {};
+      rolesRegistry = registry;
+      if (!available.length || !registry.length) {
+        rolesStatus.textContent = 'Diese Runde hat keine Datenkanäle, die zugeordnet werden könnten.';
+        rolesGrid.innerHTML = '';
+        rolesLoaded = true;
+        return;
+      }
+      rolesStatus.classList.add('hidden');
+      // Build one <select> per role. v21.44 — Vorschlag direkt vorausgewählt
+      // wenn keine persistierte Zuordnung existiert (statt als separaten Hint
+      // drunter zu zeigen). Beim Speichern landet der Vorschlag dann als
+      // explizite Zuordnung in der DB.
+      const rows = registry.map(role => {
+        const opts = ['<option value="">— nicht zugeordnet —</option>'];
+        const persistedId = current[role.id] || '';
+        const effectiveId = persistedId || (role.suggested || '');
+        for (const ch of available) {
+          const sel = (ch.id === effectiveId) ? ' selected' : '';
+          const labelTxt = ch.name + (ch.unit ? (' (' + ch.unit + ')') : '');
+          opts.push('<option value="' + escapeAttr(ch.id) + '"' + sel + '>' +
+                    escapeHTML(labelTxt) + '</option>');
+        }
+        return '<div class="em-role-row">' +
+          '<label>' + escapeHTML(role.label) + '</label>' +
+          '<select data-role-id="' + escapeAttr(role.id) + '">' + opts.join('') + '</select>' +
+          '<span class="em-role-desc">' + escapeHTML(role.description || '') + '</span>' +
+          '</div>';
+      });
+      rolesGrid.innerHTML = rows.join('');
+      rolesLoaded = true;
+    } catch (e) {
+      rolesStatus.textContent = 'Fehler beim Laden: ' + (e && e.message ? e.message : e);
+    }
+  }
+  function rolesCollect(){
+    // Returns {role_id: channel_id} for non-empty selections.
+    if (!rolesLoaded || !rolesRegistry) return null;
+    const out = {};
+    rolesGrid.querySelectorAll('select[data-role-id]').forEach(sel => {
+      const rid = sel.dataset.roleId;
+      const cid = (sel.value || '').trim();
+      out[rid] = cid;  // empty string = unassign
+    });
+    return out;
+  }
+  function escapeHTML(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function escapeAttr(s){
+    return escapeHTML(s);
+  }
+
+  function open(btn){
+    currentSessionId  = btn.dataset.sessionId;
+    const lid = parseInt(btn.dataset.lapId, 10);
+    currentLapId = Number.isFinite(lid) ? lid : null;
+    fDriver.value     = btn.dataset.driver || '';
+    fBike.value       = btn.dataset.bike   || '';
+    fTrack.value      = btn.dataset.track  || '';
+    fDate.value       = btn.dataset.sessionDate || '';
+    fNotes.value      = btn.dataset.notes  || '';
+    errBox.classList.remove('active'); errBox.textContent = '';
+    const lapCount = parseInt(btn.dataset.lapCount, 10);
+    if (Number.isFinite(lapCount) && lapCount > 1) {
+      hintBox.textContent = `Änderung gilt für alle ${lapCount} Runden dieser Session.`;
+    } else {
+      hintBox.textContent = 'Änderung gilt für alle Runden dieser Session.';
+    }
+    modal.classList.add('active');
+    rolesReset();
+    rolesLoad(currentLapId);
+    setTimeout(() => fDriver.focus(), 30);
+  }
+  function close(){
+    modal.classList.remove('active');
+    currentSessionId = null;
+    currentLapId = null;
+  }
+  async function save(){
+    if (!currentSessionId) return;
+    btnSave.disabled = true; btnCancel.disabled = true;
+    errBox.classList.remove('active'); errBox.textContent = '';
+    // 1) Session-Meta
+    const params = new URLSearchParams();
+    params.set('driver',       fDriver.value.trim());
+    params.set('bike',         fBike.value.trim());
+    params.set('track',        fTrack.value.trim());
+    params.set('session_date', fDate.value.trim());
+    params.set('notes',        fNotes.value);
+    try {
+      const resp = await fetch('/sessions/' + encodeURIComponent(currentSessionId) + '/edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: params.toString(),
+        credentials: 'same-origin',
+      });
+      const text = await resp.text();
+      let data; try { data = JSON.parse(text); } catch { data = {ok:false, error:text||('HTTP '+resp.status)}; }
+      if (!resp.ok || !data.ok) {
+        errBox.textContent = data.error || ('Speichern (Meta) fehlgeschlagen (HTTP ' + resp.status + ').');
+        errBox.classList.add('active');
+        btnSave.disabled = false; btnCancel.disabled = false;
+        return;
+      }
+      // 2) Lap-Channel-Roles (only if a lap-id is known and the section loaded)
+      const roles = rolesCollect();
+      if (currentLapId && roles) {
+        const rp = new URLSearchParams();
+        for (const rid in roles) rp.set('role_' + rid, roles[rid]);
+        const rresp = await fetch('/api/laps/' + currentLapId + '/channel-roles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body: rp.toString(),
+          credentials: 'same-origin',
+        });
+        const rtext = await rresp.text();
+        let rdata; try { rdata = JSON.parse(rtext); } catch { rdata = {ok:false, error:rtext||('HTTP '+rresp.status)}; }
+        if (!rresp.ok || !rdata.ok) {
+          errBox.textContent = rdata.error || ('Speichern (Standardkanal-Zuordnung) fehlgeschlagen (HTTP ' + rresp.status + ').');
+          errBox.classList.add('active');
+          btnSave.disabled = false; btnCancel.disabled = false;
+          return;
+        }
+      }
+      // Reload to reflect changes everywhere
+      window.location.reload();
+    } catch (e) {
+      errBox.textContent = 'Netzwerk-/Server-Fehler: ' + (e && e.message ? e.message : e);
+      errBox.classList.add('active');
+      btnSave.disabled = false; btnCancel.disabled = false;
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.edit-meta-btn');
+    if (btn) { e.preventDefault(); open(btn); return; }
+    if (e.target === modal) close();
+  });
+  btnCancel.addEventListener('click', close);
+  btnSave.addEventListener('click', save);
+  document.addEventListener('keydown', (e) => {
+    if (!modal.classList.contains('active')) return;
+    if (e.key === 'Escape') close();
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) save();
+  });
+})();
+</script>
+</body>
+</html>

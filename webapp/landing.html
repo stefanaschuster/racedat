@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Racedat · Faster with Data</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a; --bg-2:#141414; --bg-3:#1c1c1c;
+  --ink:#f5f5f0; --ink-dim:#a0a0a0; --ink-faint:#888;
+  --line:#262626;
+  --a-color:#00d4ff; --b-color:#ff3d00;
+  --accent:#00d4ff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',sans-serif;line-height:1.5;min-height:100vh}
+.mono{font-family:'JetBrains Mono',monospace;font-feature-settings:'tnum'}
+.page{max-width:1280px;margin:0 auto;padding:32px 32px 80px}
+
+
+.hero{margin:48px 0 64px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:48px;align-items:end}
+.hero .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--accent);text-transform:uppercase;margin-bottom:16px}
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(48px,7vw,84px);line-height:.88;letter-spacing:.005em;background:linear-gradient(180deg,var(--ink) 0%,#777 100%);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:0}
+.hero .subtitle{color:var(--ink-dim);font-size:15px;line-height:1.6;max-width:480px;padding-bottom:8px}
+@media (max-width:760px){.hero{grid-template-columns:1fr;gap:20px;align-items:start}.hero .subtitle{padding-bottom:0}}
+
+.hub-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:16px;margin-bottom:48px;
+}
+
+.hub-card{
+  display:flex;flex-direction:column;
+  background:var(--bg-2);border:1px solid var(--line);
+  padding:20px 22px 18px;text-decoration:none;color:inherit;
+  position:relative;overflow:hidden;
+  transition:border-color .15s, transform .15s;
+  min-height:130px;
+}
+.hub-card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--accent);transform:scaleY(0);transform-origin:top;
+  transition:transform .2s;
+}
+.hub-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.hub-card:hover::before{transform:scaleY(1)}
+
+.hub-card-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.2em;color:var(--ink-faint);text-transform:uppercase;margin-bottom:6px}
+.hub-card-title{font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1;letter-spacing:.02em;color:var(--ink);margin-bottom:10px}
+.hub-card-desc{font-size:13px;color:var(--ink-dim);line-height:1.5;flex-grow:1}
+.hub-card-arrow{font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--accent);margin-top:12px;align-self:flex-end;transition:transform .15s}
+.hub-card:hover .hub-card-arrow{transform:translateX(4px)}
+
+.hub-card.compare::before{background:linear-gradient(180deg,var(--a-color) 0%,var(--b-color) 100%)}
+.hub-card.compare:hover{border-color:var(--b-color)}
+.hub-card.compare .hub-card-arrow{color:var(--b-color)}
+
+.hub-card.analyze::before{background:#ffb000}
+.hub-card.analyze:hover{border-color:#ffb000}
+.hub-card.analyze .hub-card-arrow{color:#ffb000}
+
+.hub-card.coach::before{background:linear-gradient(180deg,#00d4ff 0%,#c77dff 100%)}
+.hub-card.coach:hover{border-color:#c77dff}
+.hub-card.coach .hub-card-arrow{color:#c77dff}
+
+.hub-card.profile::before{background:#c77dff}
+.hub-card.profile:hover{border-color:#c77dff}
+.hub-card.profile .hub-card-arrow{color:#c77dff}
+
+.hub-card.records::before{background:#FFD700}
+.hub-card.records:hover{border-color:#FFD700}
+.hub-card.records .hub-card-arrow{color:#FFD700}
+
+.hub-card.admin::before{background:var(--a-color)}
+.hub-card.admin:hover{border-color:var(--a-color)}
+.hub-card.admin .hub-card-arrow{color:var(--a-color)}
+
+.fineprint{
+  margin-top:48px;padding-top:32px;border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:32px;
+  color:var(--ink-dim);font-size:13px;line-height:1.6;
+}
+.fineprint h3{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--ink-faint);text-transform:uppercase;margin-bottom:8px;font-weight:500}
+.fineprint a{color:var(--accent);text-decoration:none}
+.fineprint a:hover{text-decoration:underline}
+
+footer{margin-top:80px;padding-top:32px;border-top:1px solid var(--line);color:var(--ink-faint);font-family:'JetBrains Mono',monospace;font-size:11px;display:flex;justify-content:space-between;letter-spacing:.05em;flex-wrap:wrap;gap:16px}
+
+@media (max-width:640px){
+  .page{padding:24px 20px 64px}
+  nav{margin-bottom:40px}
+  .hero{margin:24px 0 40px}
+  .hub-card{padding:24px 20px;min-height:auto}
+}
+</style>
+</head>
+<body>
+{{HEADER}}
+<div class="page">
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">Telemetrie-Workbench</div>
+      <h1>FASTER<br>WITH DATA</h1>
+    </div>
+    <div class="subtitle">
+      Lade Telemetrie hoch, analysiere einzelne Runden in der Tiefe,
+      und vergleiche Runden gegeneinander um zu sehen wo wer Zeit gewinnt.
+      Funktioniert mit AiM&nbsp;SES/XRK/CSV, MoTeC&nbsp;LD,
+      RaceBox&nbsp;Fastlap&nbsp;CSV, Starlane&nbsp;CSV, I2M&nbsp;(.dat)
+      und 2D (Zip mit MES&nbsp;Verzeichnis).
+	<br/>
+	<br/>
+	<b>Kontakt fuer User und Fragen zum Tool an generic(at)gmx.org.</b>
+    </div>
+  </section>
+
+  <div class="hub-grid">
+    <a href="/sessions" class="hub-card">
+      <div class="hub-card-eyebrow">Bibliothek</div>
+      <div class="hub-card-title">RUNDEN</div>
+      <div class="hub-card-desc">
+        Alle gespeicherten Runden aus Training und Race. Browse,
+        durchsuche, verwalte.
+      </div>
+      <div class="hub-card-arrow">→</div>
+    </a>
+
+    <a href="/analyze" class="hub-card analyze">
+      <div class="hub-card-eyebrow">Single-Lap Daten</div>
+      <div class="hub-card-title">DATENVIEWER</div>
+      <div class="hub-card-desc">
+        Eine Runde in der Tiefe: Bremszonen, Beschleunigung, Track-Map
+        und Speed-Profil.
+      </div>
+      <div class="hub-card-arrow">→</div>
+    </a>
+
+    <a href="/coach" class="hub-card coach">
+      <div class="hub-card-eyebrow">Single-Lap Auswertung</div>
+      <div class="hub-card-title">AI ANALYSE UND COACH</div>
+      <div class="hub-card-desc">
+        Automatische Bewertung: Phasen, Top-Speed, Sektoren,
+        Brems- und Beschleunigungs-Analyse.
+      </div>
+      <div class="hub-card-arrow">→</div>
+    </a>
+
+    <a href="/compare" class="hub-card compare">
+      <div class="hub-card-eyebrow">Zwei Runden</div>
+      <div class="hub-card-title">VERGLEICHEN</div>
+      <div class="hub-card-desc">
+        Zwei Runden überlagern: Δ-Kurve, Hot-Zones, Speed-Differenzen.
+      </div>
+      <div class="hub-card-arrow">→</div>
+    </a>
+
+    <a href="/profile" class="hub-card profile">
+      <div class="hub-card-eyebrow">Fahrer & Motorräder</div>
+      <div class="hub-card-title">PROFIL</div>
+      <div class="hub-card-desc">
+        Fahrername und Motorräder verwalten — wird beim Upload
+        automatisch vorbelegt.
+      </div>
+      <div class="hub-card-arrow">→</div>
+    </a>
+
+    <a href="/records" class="hub-card records">
+      <div class="hub-card-eyebrow">Top 3 pro Strecke</div>
+      <div class="hub-card-title">BESTZEITEN</div>
+      <div class="hub-card-desc">
+        Wer ist am schnellsten — Gold, Silber, Bronze pro Strecke
+        über alle Fahrer hinweg.
+      </div>
+      <div class="hub-card-arrow">→</div>
+    </a>
+
+    {{ADMIN_CARD}}
+  </div>
+
+  <div class="fineprint">
+    <div>
+      <h3>Direkter Vergleich</h3>
+      Für schnelle Ad-hoc-Vergleiche ohne Speicherung: direkt zwei Dateien
+      hochladen auf <a href="/compare">Vergleichen</a>.
+    </div>
+    <div>
+      <h3>Datenformate</h3>
+      AiM SES (50 Hz), MoTeC LD/LDX, AiM XRK/XRZ (libxrk), AiM CSV,
+      RaceBox Fastlap CSV (25 Hz + IMU), Starlane LapTable CSV,
+      I2M .dat (Chrome/DataLog und Danas/Corsa), 2D Datalogger (.zip).
+      Bis 70 MB pro Datei.
+    </div>
+    <div>
+      <h3>Persönliche Daten</h3>
+      Hochgeladene Sessions liegen im Logger-Account. Ad-hoc-Vergleiche und
+      Datenviewer-Aufrufe ohne Login bleiben auf dem Server nicht erhalten.
+    </div>
+  </div>
+
+  <footer>
+    <span>RACEDAT · FASTER WITH DATA</span>
+    <span><a href="/impressum" style="color:inherit;text-decoration:none">Impressum</a> · <a href="/datenschutz" style="color:inherit;text-decoration:none">Datenschutz</a></span>
+    <span></span>
+  </footer>
+</div>
+</body>
+</html>

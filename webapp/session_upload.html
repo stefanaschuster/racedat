@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Session hochladen · Racedat</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a; --bg-2:#141414;
+  --ink:#f5f5f0; --ink-dim:#a0a0a0; --ink-faint:#888;
+  --line:#262626;
+  --a-color:#ff3d00; --b-color:#00d4ff;
+  --accent:#00d4ff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',sans-serif;line-height:1.5;min-height:100vh}
+.mono{font-family:'JetBrains Mono',monospace;font-feature-settings:'tnum'}
+.page{max-width:880px;margin:0 auto;padding:48px 32px 80px}
+
+
+
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--ink-dim);text-transform:uppercase;margin-bottom:16px}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5vw,56px);line-height:.9;letter-spacing:.01em;background:linear-gradient(180deg,var(--ink) 0%,#888 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.subtitle{color:var(--ink-dim);font-size:14px;margin-top:12px;max-width:520px;line-height:1.6}
+
+.section-title{margin:40px 0 16px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:12px}
+.section-title h2{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.02em;color:var(--ink)}
+.section-title .num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);letter-spacing:.15em}
+
+.drop-zone{
+  background:var(--bg-2);border:1px dashed var(--line);
+  padding:40px 32px;text-align:center;cursor:pointer;
+  transition:border-color .15s, background .15s;
+  position:relative;
+}
+.drop-zone:hover, .drop-zone.dragging{border-color:var(--accent);background:#1a1f23}
+.drop-zone .icon{font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--ink-faint);margin-bottom:12px}
+.drop-zone .label{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--ink);letter-spacing:.02em;margin-bottom:6px}
+.drop-zone .hint{color:var(--ink-dim);font-size:11px;font-family:'JetBrains Mono',monospace;letter-spacing:.05em}
+.drop-zone input[type="file"]{
+  /* Hide the native input entirely. Clicking the <label class="drop-zone">
+     parent will open the file dialog (default label behavior). Some
+     browsers used to show the input chrome even with opacity:0, so we
+     also clamp it to 0×0 and absolute-position it off-screen. */
+  position:absolute;left:-9999px;width:0;height:0;
+  opacity:0;visibility:hidden;pointer-events:none;
+}
+
+.file-info{
+  margin-top:12px;padding:12px 16px;background:var(--bg-2);border-left:3px solid var(--accent);
+  font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-dim);display:none;
+}
+.file-info.active{display:block}
+.file-info .name{color:var(--ink);font-weight:500}
+.file-info .size{color:var(--ink-faint);margin-left:8px}
+
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px}
+.meta-grid .full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-faint);letter-spacing:.15em;text-transform:uppercase}
+.field input, .field textarea, .field select{
+  background:var(--bg-2);border:1px solid var(--line);
+  color:var(--ink);font-family:'Space Grotesk',sans-serif;font-size:14px;
+  padding:10px 14px;outline:none;
+}
+.field input:focus, .field textarea:focus, .field select:focus{border-color:var(--accent)}
+.field textarea{resize:vertical;min-height:80px;font-family:'JetBrains Mono',monospace;font-size:13px}
+.field .hint{color:var(--ink-faint);font-size:11px;font-family:'JetBrains Mono',monospace}
+.field input[list]::-webkit-calendar-picker-indicator{filter:invert(.5)}
+
+/* v21.34 — KANAL-ZUORDNUNG: dezenter Hinweistext */
+/* v21.44 — .suggested CSS entfernt, Vorschlag steht jetzt direkt im <select> */
+.field .desc{color:var(--ink-dim);font-size:11px;font-family:'JetBrains Mono',monospace;letter-spacing:.04em}
+.role-empty{
+  color:var(--ink-faint);font-family:'JetBrains Mono',monospace;font-size:13px;
+  padding:14px 16px;background:var(--bg-2);border:1px dashed var(--line);
+}
+
+.submit-row{margin-top:32px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.btn{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.05em;background:var(--accent);color:#000;border:none;padding:14px 28px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn:hover{background:#1ee4ff}
+.btn:disabled{background:var(--ink-faint);cursor:not-allowed}
+.btn.secondary{background:transparent;color:var(--ink-dim);border:1px solid var(--line)}
+.btn.secondary:hover{color:var(--ink);border-color:var(--ink)}
+
+.error-banner{background:#2a0a05;border-left:3px solid var(--a-color);padding:14px 20px;margin-bottom:24px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink);display:none}
+.error-banner.active{display:block}
+
+.processing{position:fixed;inset:0;background:rgba(10,10,10,.85);backdrop-filter:blur(8px);z-index:200;display:none;align-items:center;justify-content:center}
+.processing.active{display:flex}
+.processing-inner{text-align:center}
+.processing-inner .label{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--ink);margin-bottom:16px;letter-spacing:.05em}
+.processing-inner .hint{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-dim);letter-spacing:.1em}
+.spinner{width:48px;height:48px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 24px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Lap selection step */
+.lap-list{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--line)}
+.lap-row{
+  display:grid;grid-template-columns:32px 120px 1fr 120px;gap:16px;align-items:center;
+  padding:12px 8px;border-bottom:1px solid var(--line);cursor:pointer;
+}
+.lap-row:hover{background:var(--bg-2)}
+.lap-row.fastest{background:#0a2128}
+.lap-row input[type="checkbox"], .lap-row input[type="radio"]{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
+.lap-row .lap-num{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink-dim);letter-spacing:.1em}
+.lap-row .lap-time{font-family:'JetBrains Mono',monospace;font-feature-settings:'tnum';font-size:18px;color:var(--ink);font-weight:500}
+.lap-row .lap-time.best{color:var(--accent)}
+.lap-row .lap-info{font-size:12px;color:var(--ink-faint);font-family:'JetBrains Mono',monospace}
+.lap-row .badge{display:inline-block;background:var(--accent);color:#000;font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 6px;letter-spacing:.1em;margin-left:8px}
+
+.select-row{display:flex;gap:12px;margin:16px 0}
+.select-row button{
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.15em;text-transform:uppercase;
+  background:transparent;border:1px solid var(--line);color:var(--ink-dim);
+  padding:6px 12px;cursor:pointer;
+}
+.select-row button:hover{color:var(--ink);border-color:var(--ink)}
+
+footer{margin-top:80px;padding-top:32px;border-top:1px solid var(--line);color:var(--ink-faint);font-family:'JetBrains Mono',monospace;font-size:11px;display:flex;justify-content:space-between;letter-spacing:.05em;flex-wrap:wrap;gap:16px}
+
+@media (max-width:768px){
+  .meta-grid{grid-template-columns:1fr}
+  .lap-row{grid-template-columns:32px 1fr 120px;gap:8px}
+  .lap-row .lap-num{display:none}
+}
+/* v23.16 — Phone-Stufe */
+@media (max-width:520px){
+  .page{padding:24px 16px 64px}
+  .field input, .field textarea, .field select{font-size:16px}
+  .drop-zone{padding:24px 16px}
+}
+</style>
+</head>
+<body>
+
+<div class="processing" id="processing">
+  <div class="processing-inner">
+    <div class="spinner"></div>
+    <div class="label">VERARBEITE</div>
+    <div class="hint">PARSE · DETECT LAPS</div>
+  </div>
+</div>
+
+{{HEADER}}
+<div class="page">
+  <div class="error-banner" id="error-banner"></div>
+
+  {{CONTENT}}
+
+  <footer>
+    <span>RACEDAT · FASTER WITH DATA</span>
+    <span><a href="/impressum" style="color:inherit;text-decoration:none">Impressum</a> · <a href="/datenschutz" style="color:inherit;text-decoration:none">Datenschutz</a></span>
+    <span>NUR EXTRAHIERTE RUNDEN WERDEN IN DER DB GESPEICHERT</span>
+  </footer>
+</div>
+
+<script>
+function fmtSize(bytes){
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
+const inp = document.getElementById('file');
+const drop = document.getElementById('drop');
+const info = document.getElementById('info');
+if (inp && drop){
+  inp.addEventListener('change', () => updateInfo());
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.add('dragging');
+  }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.remove('dragging');
+  }));
+  drop.addEventListener('drop', e => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length > 0){
+      inp.files = e.dataTransfer.files;
+      updateInfo();
+    }
+  });
+  function updateInfo(){
+    if (inp.files.length > 0){
+      const f = inp.files[0];
+      info.querySelector('.name').textContent = f.name;
+      info.querySelector('.size').textContent = ' · ' + fmtSize(f.size);
+      info.classList.add('active');
+    } else {
+      info.classList.remove('active');
+    }
+  }
+}
+
+const uploadForm = document.getElementById('upload-form');
+const processing = document.getElementById('processing');
+const errorBanner = document.getElementById('error-banner');
+if (uploadForm){
+  uploadForm.addEventListener('submit', e => {
+    errorBanner.classList.remove('active');
+    if (!inp || !inp.files.length){
+      e.preventDefault();
+      errorBanner.textContent = '⚠  Bitte eine Datei auswählen.';
+      errorBanner.classList.add('active');
+      window.scrollTo({top:0});
+      return;
+    }
+    processing.classList.add('active');
+  });
+}
+
+// Lap selection: only one lap can be selected. The radio buttons handle
+// the mutual exclusion natively. Clicking anywhere on a row selects its radio.
+document.querySelectorAll('.lap-row').forEach(row => {
+  row.addEventListener('click', e => {
+    if (e.target.tagName === 'INPUT') return;
+    const r = row.querySelector('input[type="radio"]');
+    if (r) r.checked = true;
+  });
+});
+
+// Show server-side error if any
+const params = new URLSearchParams(location.search);
+if (params.has('error')){
+  errorBanner.textContent = '⚠  ' + decodeURIComponent(params.get('error'));
+  errorBanner.classList.add('active');
+}
+</script>
+</body>
+</html>

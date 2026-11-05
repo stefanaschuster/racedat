@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Bestzeiten · Racedat</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a; --bg-2:#141414; --bg-3:#1c1c1c;
+  --ink:#f5f5f0; --ink-dim:#a0a0a0; --ink-faint:#888;
+  --line:#262626;
+  --a-color:#ff3d00; --b-color:#00d4ff;
+  --accent:#7af0e0;
+  --gold:#d4a93a; --silver:#b8b8b8; --bronze:#a86b32;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',sans-serif;line-height:1.5;min-height:100vh}
+.mono{font-family:'JetBrains Mono',monospace;font-feature-settings:'tnum'}
+.page{max-width:1280px;margin:0 auto;padding:24px 32px 64px}
+
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--ink-dim);text-transform:uppercase;margin-bottom:12px}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(32px,4.5vw,48px);line-height:.9;letter-spacing:.01em;background:linear-gradient(180deg,var(--ink) 0%,#888 100%);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:6px}
+.subtitle{color:var(--ink-dim);font-size:13px;line-height:1.55;max-width:620px;margin-bottom:24px}
+
+/* === TRACK-GRID ======================================================= */
+.rec-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(500px,1fr));
+  gap:18px;
+}
+.rec-track{
+  background:var(--bg-2);border:1px solid var(--line);
+  padding:12px 16px 16px;
+  min-width:0;
+}
+.rec-track-name{
+  font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.02em;
+  color:var(--ink);margin-bottom:14px;
+  border-bottom:1px solid var(--line);padding-bottom:6px;
+  word-break:break-word;
+}
+
+/* === PODIUM ===========================================================
+   v23.5 — Robust gegen externe CSS-Konflikte:
+   - Wir benutzen FLEXBOX (nicht Grid) für die drei Sockel nebeneinander
+     — flex-direction:row mit feste Breiten-Anteile. Browser sind hier
+     deutlich strikter beim Behandeln von <a>-Children als bei Grid.
+   - Jeder Sockel ist ein <div class="rec-step">, KEIN <a>. Der Klick-
+     Link sitzt drin als <a class="rec-step-link"> und füllt den Sockel
+     komplett aus (position:absolute, inset:0).
+   - Höhen-Staffelung über explizite min-height auf dem Sockel selbst,
+     wieder mit padding-top als interner Spacer. */
+.rec-podium{
+  display:flex;flex-direction:row;align-items:flex-end;
+  gap:6px;
+  width:100%;
+}
+
+.rec-step{
+  flex:1 1 0;          /* gleichmäßig aufteilen */
+  min-width:0;         /* schrumpfen erlauben */
+  position:relative;   /* damit <a> absolute drin sitzen kann */
+  display:flex;flex-direction:column;align-items:center;
+  background:var(--step-bg);
+  padding:10px 8px 12px;
+}
+.rec-step-1{flex-grow:1.15}   /* Mitte etwas breiter */
+
+.rec-step-1{
+  --step-bg:linear-gradient(180deg,#0d0d0d 0%, #050505 100%);
+  --rank-color:var(--gold);
+  --bike-color:var(--gold);
+  padding-top:64px;     /* Spacer-Effekt: Inhalt rutscht nach unten,
+                           Sockel ist insgesamt am höchsten */
+}
+.rec-step-2{
+  --step-bg:linear-gradient(180deg,#202020 0%, #161616 100%);
+  --rank-color:var(--silver);
+  --bike-color:var(--silver);
+  padding-top:32px;
+}
+.rec-step-3{
+  --step-bg:linear-gradient(180deg,#1f160d 0%, #150e07 100%);
+  --rank-color:var(--bronze);
+  --bike-color:var(--bronze);
+  padding-top:10px;
+}
+.rec-step.empty{
+  --step-bg:var(--bg-3);
+  --rank-color:var(--ink-faint);
+  --bike-color:var(--ink-faint);
+}
+
+/* Klick-Overlay: füllt den ganzen Sockel als unsichtbarer Link */
+.rec-step-link{
+  position:absolute;inset:0;
+  text-decoration:none;color:inherit;
+  z-index:1;
+  transition:background .15s;
+}
+.rec-step-link:hover{background:rgba(255,255,255,.04)}
+
+/* Inhalt liegt visuell vor dem Klick-Overlay */
+.rec-step > *:not(.rec-step-link){position:relative;z-index:2}
+
+/* Owner-Link muss über dem Klick-Overlay liegen damit er als
+   eigenständiger Link funktioniert */
+.rec-driver a.rec-owner-link{
+  position:relative;z-index:3;
+  color:inherit;text-decoration:none;
+}
+.rec-driver a.rec-owner-link:hover{color:var(--rank-color);text-decoration:underline}
+
+/* Inhalt-Stil */
+.rec-rank{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:42px;line-height:.9;letter-spacing:.02em;
+  color:var(--rank-color);
+  margin-bottom:4px;
+  text-align:center;
+}
+.rec-step-1 .rec-rank{font-size:52px}
+.rec-step-3 .rec-rank{font-size:36px}
+
+.rec-divider{
+  width:38px;height:1px;background:var(--rank-color);
+  opacity:.85;margin-bottom:8px;flex-shrink:0;
+}
+
+.rec-driver{
+  font-family:'Space Grotesk',sans-serif;font-weight:700;
+  font-size:15px;line-height:1.15;letter-spacing:.02em;
+  color:var(--ink);
+  text-align:center;
+  text-transform:uppercase;
+  max-width:100%;
+  word-break:break-word;
+  overflow-wrap:anywhere;
+}
+.rec-step-1 .rec-driver{font-size:19px}
+.rec-step-3 .rec-driver{font-size:13px}
+
+.rec-bike{
+  font-family:'Space Grotesk',sans-serif;font-weight:600;
+  font-style:italic;font-size:11px;letter-spacing:.03em;
+  color:var(--bike-color);
+  margin-top:3px;text-align:center;
+  text-transform:uppercase;line-height:1.2;
+  max-width:100%;
+  word-break:break-word;
+  overflow-wrap:anywhere;
+}
+.rec-step-1 .rec-bike{font-size:12.5px}
+.rec-step-3 .rec-bike{font-size:10px}
+
+.rec-time{
+  font-family:'JetBrains Mono',monospace;font-feature-settings:'tnum';
+  font-size:12px;font-weight:500;
+  color:var(--accent);
+  margin-top:8px;text-align:center;
+  white-space:nowrap;
+}
+.rec-step-1 .rec-time{font-size:14px}
+.rec-step-3 .rec-time{font-size:11px}
+
+.rec-empty-mark{
+  font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--ink-faint);
+  letter-spacing:.05em;margin-top:8px;
+}
+
+/* === EMPTY-STATE ====================================================== */
+.empty-state{
+  background:var(--bg-2);border:1px dashed var(--line);
+  padding:48px 32px;text-align:center;
+}
+.empty-state .icon{font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--ink-faint);margin-bottom:12px}
+.empty-state .label{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--ink);letter-spacing:.02em;margin-bottom:12px}
+.empty-state .hint{color:var(--ink-dim);font-size:13px;line-height:1.5;max-width:480px;margin:0 auto}
+
+footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--line);color:var(--ink-faint);font-family:'JetBrains Mono',monospace;font-size:11px;display:flex;justify-content:space-between;letter-spacing:.05em;flex-wrap:wrap;gap:16px}
+
+@media (max-width:600px){
+  .rec-grid{grid-template-columns:1fr}
+  .rec-podium{gap:4px}
+  .rec-step{padding:8px 6px 10px}
+  .rec-step-1{padding-top:44px}
+  .rec-step-2{padding-top:22px}
+  .rec-step-3{padding-top:8px}
+}
+@media (max-width:520px){
+  .page{padding:24px 16px 64px}
+}
+</style>
+</head>
+<body>
+{{HEADER}}
+<div class="page">
+
+  <div class="eyebrow">Bestzeiten · global</div>
+  <h1>BESTZEITEN</h1>
+  <div class="subtitle">
+    Pro Strecke die drei schnellsten Runden über alle Fahrer hinweg.
+    Klick auf einen Sockel öffnet die Runde im Datenviewer, Klick auf
+    den Fahrernamen das Profil.
+  </div>
+
+  {{CONTENT}}
+
+  <footer>
+    <span>RACEDAT · FASTER WITH DATA</span>
+    <span><a href="/impressum" style="color:inherit;text-decoration:none">Impressum</a> · <a href="/datenschutz" style="color:inherit;text-decoration:none">Datenschutz</a></span>
+    <span>{{NOW}}</span>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,4 @@
+racedat.de, www.racedat.de {
+    reverse_proxy 127.0.0.1:8000
+    encode gzip
+}

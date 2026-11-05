@@ -2220,7 +2220,7 @@ _COMPARE_PICKER_MODAL = r"""
         <div class="lp-upload-drop">
           <div class="lp-upload-icon">⇪</div>
           <div class="lp-upload-title">DATEI FÜR SLOT <span id="lp-upload-slot-label">A</span> WÄHLEN</div>
-          <div class="lp-upload-hint">.ses · .ld · .xrk/.xrz · .csv · .dat (I2M) · .zip (2D) — max 10 MB</div>
+          <div class="lp-upload-hint">.ses · .ld · .xrk/.xrz · .csv · .dat (I2M) · .zip (2D) — max 50 MB</div>
           <input type="file" name="file" id="lp-file-input" required
                  accept=".ses,.SES,.ld,.LD,.xrk,.XRK,.xrz,.XRZ,.csv,.CSV,.dat,.DAT,.zip,.ZIP">
           <div class="lp-upload-name" id="lp-upload-name"></div>

@@ -17,7 +17,7 @@ legacy/                alte Deploy-Dateien (Caddy/systemd)
 ```
 
 ## Unterschiede zur Standalone-Version
-- Upload-Limit **10 MB pro Anfrage** (nativeAI-Proxy; vorher 70 MB).
+- Upload-Limit **50 MB** (`MAX_UPLOAD_MB`; der nativeAI-Proxy muss es zulassen, Standard dort 10 MB; vorher 70 MB).
 - Registrierungsmails über die **Brevo-HTTPS-API** (kein SMTP). Braucht freigeschaltetes Internet und `BREVO_API_KEY` (API-Key, nicht SMTP-Key).
 - Konfiguration über `.env` statt `config.json`.
 

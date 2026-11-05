@@ -143,8 +143,9 @@ import mailer
 # ---------- Configuration ---------------------------------------------------
 
 ALLOWED_EXTS = {".ses", ".ld", ".xrk", ".xrz", ".csv", ".dat", ".zip"}
-# nativeAI: der Proxy erlaubt höchstens 10 MB pro Request.
-MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+# Upload-Limit pro Datei/Request; per .env (MAX_UPLOAD_MB) änderbar.
+# Der vorgeschaltete nativeAI-Proxy muss dieses Limit ebenfalls zulassen.
+MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_MB", "50")) * 1024 * 1024
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 WEBAPP_DIR = HERE / "webapp"     # HTML-Templates
 STATIC_DIR = HERE / "static"     # ausgelieferte JS/CSS-Assets
@@ -3400,7 +3401,7 @@ class WebHandler(BaseHTTPRequestHandler):
   <form id="upload-form" method="POST" action="/sessions/upload" enctype="multipart/form-data">
     <div class="section-title">
       <h2>DATEI</h2>
-      <span class="num">.SES · .LD · .XRK · .XRZ · .CSV · .DAT (I2M) · .ZIP (2D) · MAX 10MB</span>
+      <span class="num">.SES · .LD · .XRK · .XRZ · .CSV · .DAT (I2M) · .ZIP (2D) · MAX 50MB</span>
     </div>
     <label class="drop-zone" id="drop">
       <div class="icon">⌁</div>

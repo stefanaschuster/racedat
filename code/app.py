@@ -12,6 +12,7 @@ Laufzeit-Konfiguration (.env):
   MAIL_SENDER_EMAIL  verifizierter Brevo-Absender
   MAIL_SENDER_NAME   Anzeigename (optional)
   MAPTILER_KEY       optional, für die Kartenansicht
+  MAX_UPLOAD_MB      Upload-Limit in MB (Standard 50)
   DEBUG_LOG          "1" für strukturierte Request-Logs auf stderr
 Daten: $APP_DATA (sessions.db, originals/, reports/, ...).
 """
@@ -35,7 +36,7 @@ DATA = Path(os.environ.get("APP_DATA", str(HERE.parent / "data")))
 STATIC = HERE / "static"
 
 # Obergrenze gleichzeitig laufender Handler (512 MB RAM für alle Apps).
-_LIMITER = anyio.CapacityLimiter(6)
+_LIMITER = anyio.CapacityLimiter(3)  # große Uploads belegen mehrfach RAM
 _MAX_BODY = webserver.MAX_UPLOAD_BYTES + 2 * 1024 * 1024
 _DROP_REQ = {b"connection", b"transfer-encoding", b"content-length",
              b"keep-alive", b"upgrade", b"expect"}
@@ -123,11 +124,11 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 async def bridge(request: Request, path: str):
     cl = request.headers.get("content-length")
     if cl and cl.isdigit() and int(cl) > _MAX_BODY:
-        return Response("Upload zu groß (max. 10 MB pro Anfrage).",
+        return Response("Upload zu groß (max. " + str(webserver.MAX_UPLOAD_BYTES // 1048576) + " MB).",
                         status_code=413, media_type="text/plain")
     body = await request.body()
     if len(body) > _MAX_BODY:
-        return Response("Upload zu groß (max. 10 MB pro Anfrage).",
+        return Response("Upload zu groß (max. " + str(webserver.MAX_UPLOAD_BYTES // 1048576) + " MB).",
                         status_code=413, media_type="text/plain")
     raw_path = request.scope.get("raw_path") or request.url.path.encode()
     target = raw_path.decode("latin-1")

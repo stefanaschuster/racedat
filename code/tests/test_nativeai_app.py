@@ -58,7 +58,7 @@ class TestApp(unittest.TestCase):
 
     def test_oversize_rejected(self):
         r = self.c.post("/api/adhoc/laps",
-                        files={"file": ("x.dat", b"x" * (13 * 1024 * 1024))})
+                        files={"file": ("x.dat", b"x" * (53 * 1024 * 1024))})
         self.assertEqual(r.status_code, 413)
 
 

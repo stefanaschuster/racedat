@@ -14,7 +14,7 @@ Laufzeit-Konfiguration (.env):
   MAPTILER_KEY       optional, für die Kartenansicht
   MAX_UPLOAD_MB      Upload-Limit in MB (Standard 50)
   DEBUG_LOG          "1" für strukturierte Request-Logs auf stderr
-Daten: $APP_DATA (sessions.db, originals/, reports/, ...).
+Daten: $APP_DATA (sessions.db, originals/, reports/, legal_data.js, ...).
 """
 import io
 import os
@@ -143,7 +143,20 @@ def health():
     return {"ok": True, "version": webserver.VERSION}
 
 
-# Statische Assets (speed_chart.js, legal_data.js, ...)
+@app.get("/static/legal_data.js")
+def legal_data():
+    """Impressum/Datenschutz-Angaben: $APP_DATA/legal_data.js hat Vorrang
+    (überlebt Code-Updates, wird von migrate_data.py aus dem alten Server
+    übernommen), sonst die mitgelieferte Vorlage."""
+    p = DATA / "legal_data.js"
+    if not p.is_file():
+        p = STATIC / "legal_data.js"
+    return Response(p.read_bytes(),
+                    media_type="application/javascript; charset=utf-8",
+                    headers={"Cache-Control": "public, max-age=300"})
+
+
+# Statische Assets (speed_chart.js, ...)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 

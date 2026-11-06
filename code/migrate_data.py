@@ -29,6 +29,13 @@ Datenverzeichnis; --env ändert den Pfad). Bereits gesetzte, nicht leere Werte
 in der .env werden NIE überschrieben. BASE_URL wird auf die neue Adresse
 gesetzt (--base-url, sonst https://<App-Name>.nativeai.digitalsandkasten.de).
 Geheimnisse werden nur maskiert angezeigt.
+
+Impressum/Datenschutz: Die ausgefüllte legal_data.js des alten Servers
+(Standard: /opt/lap_compare/lap_tool/webapp/legal_data.js, --legacy-app ändert
+das Verzeichnis, --legal-js gibt die Datei direkt an) wird nach
+<Daten>/legal_data.js kopiert; die App liefert sie bevorzugt aus. Weichen
+impressum.html/datenschutz.html des alten Servers von den neuen ab, wird das
+gemeldet (Texte dann von Hand prüfen).
 """
 import argparse
 import json
@@ -175,6 +182,33 @@ def migrate_env(cfg_path: Path, env_path: Path, base_url: str, dry: bool):
         print("  .env aktualisiert (Sicherung als .env.bak-…)")
 
 
+def migrate_legal(dst: Path, legacy_app: Path, legal_js, dry: bool):
+    print("\nImpressum/Datenschutz:")
+    cand = Path(legal_js).expanduser() if legal_js else legacy_app / "webapp" / "legal_data.js"
+    target = dst / "legal_data.js"
+    if not cand.is_file():
+        print(f"  {cand} nicht gefunden -> mit --legal-js <Datei> oder --legacy-app <Verzeichnis> angeben")
+        return
+    if target.is_file():
+        if target.read_bytes() == cand.read_bytes():
+            print("  legal_data.js: bereits identisch vorhanden")
+        else:
+            print(f"  legal_data.js: Ziel existiert mit anderem Inhalt, nicht überschrieben ({target})")
+    else:
+        print(f"  legal_data.js: {cand} -> {target}" + ("  [würde kopiert]" if dry else "  [kopiert]"))
+        if not dry:
+            dst.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(cand, target)
+    here = Path(__file__).resolve().parent / "webapp"
+    for name in ("impressum.html", "datenschutz.html"):
+        old, new = (legal_js and cand.parent or legacy_app / "webapp") / name, here / name
+        if old.is_file() and new.is_file() and old.read_bytes() != new.read_bytes():
+            print(f"  HINWEIS: {name} des alten Servers weicht von der neuen Vorlage ab -> Text prüfen/übernehmen ({old})")
+    txt = (target if target.is_file() else cand).read_text(encoding="utf-8", errors="replace")
+    if "VORNAME NACHNAME" in txt:
+        print("  WARNUNG: legal_data.js enthält noch Platzhalter (VORNAME NACHNAME)")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -187,6 +221,10 @@ def main() -> int:
     ap.add_argument("--env", help=".env der App (Standard: <dst>/../.env)")
     ap.add_argument("--base-url", help="BASE_URL der neuen App (Standard: https://<App-Name>.nativeai.digitalsandkasten.de)")
     ap.add_argument("--no-env", action="store_true", help="Konfiguration nicht übernehmen")
+    ap.add_argument("--legacy-app", default="/opt/lap_compare/lap_tool",
+                    help="Programmverzeichnis des alten Servers (für webapp/legal_data.js)")
+    ap.add_argument("--legal-js", help="legal_data.js des alten Servers direkt angeben")
+    ap.add_argument("--no-legal", action="store_true", help="Impressum/Datenschutz nicht übernehmen")
     a = ap.parse_args()
 
     src = Path(a.src).expanduser().resolve()
@@ -297,6 +335,8 @@ def main() -> int:
         env_path = Path(a.env).expanduser() if a.env else dst.parent / ".env"
         base_url = a.base_url or f"https://{dst.parent.name}.nativeai.digitalsandkasten.de"
         migrate_env(src / "config.json", env_path, base_url, dry)
+    if not a.no_legal:
+        migrate_legal(dst, Path(a.legacy_app).expanduser(), a.legal_js, dry)
     if dry:
         print("\nDRY-RUN: nichts geschrieben.")
     return 0

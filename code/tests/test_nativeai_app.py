@@ -49,6 +49,17 @@ class TestApp(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertIn("javascript", r.headers["content-type"])
 
+    def test_legal_data_prefers_data_dir(self):
+        r = self.c.get("/static/legal_data.js")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("LEGAL_DATA", r.text)
+        (Path(self.tmp.name) / "legal_data.js").write_text("const LEGAL_DATA={x:'ueberschrieben'};")
+        try:
+            r = self.c.get("/static/legal_data.js")
+            self.assertIn("ueberschrieben", r.text)
+        finally:
+            (Path(self.tmp.name) / "legal_data.js").unlink()
+
     def test_login_sets_cookie(self):
         r = self.c.post("/login", data={"email": "t@example.com",
                                         "password": "secret123pw"},
@@ -126,9 +137,13 @@ class TestMigration(unittest.TestCase):
                          "sender_name": "Racedat"},
                 "foo": 1}))
             (app / ".env").write_text("MAIL_SENDER_NAME=Behalten\n")
+            legacy = t / "legacy"
+            (legacy / "webapp").mkdir(parents=True)
+            (legacy / "webapp" / "legal_data.js").write_text('const LEGAL_DATA={name:"Max Muster"};')
             script = str(CODE / "migrate_data.py")
             r = subprocess.run([sys.executable, "-I", script, "--src", str(old),
-                                "--dst", str(new)], capture_output=True, text=True)
+                                "--dst", str(new), "--legacy-app", str(legacy)],
+                               capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
             env = dict(l.split("=", 1) for l in (app / ".env").read_text().splitlines())
             self.assertEqual(env["MAPTILER_KEY"], "mt-key-123456")
@@ -140,6 +155,7 @@ class TestMigration(unittest.TestCase):
             self.assertNotIn("xkeysib-abcdef0123456789", r.stdout)  # maskiert
             self.assertIn("foo", r.stdout)  # unbekannter Schlüssel gemeldet
             self.assertTrue(list(app.glob(".env.bak-*")))
+            self.assertIn("Max Muster", (new / "legal_data.js").read_text())
 
 
 if __name__ == "__main__":

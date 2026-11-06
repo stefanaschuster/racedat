@@ -88,6 +88,18 @@ class _BridgeHandler(webserver.WebHandler):
         pass
 
 
+def _legal_file() -> Path:
+    p = DATA / "legal_data.js"
+    return p if p.is_file() else STATIC / "legal_data.js"
+
+
+def _legal_version() -> str:
+    try:
+        return str(int(_legal_file().stat().st_mtime))
+    except OSError:
+        return "0"
+
+
 def _run_handler(method: str, target: str, headers, body: bytes,
                  client_ip: str) -> Response:
     head = [f"{method} {target} HTTP/1.1".encode("latin-1")]
@@ -111,6 +123,12 @@ def _run_handler(method: str, target: str, headers, body: bytes,
     lines = out[:sep].decode("latin-1").split("\r\n")
     status = int(lines[0].split(" ", 2)[1])
     payload = out[sep + 4:]
+    if target.split("?", 1)[0].rstrip("/") in ("/impressum", "/datenschutz"):
+        # Adresse der Rechtstexte versionieren: ändert sich legal_data.js,
+        # ändert sich die URL, und kein Browser behält eine alte Kopie.
+        payload = payload.replace(
+            b'src="/static/legal_data.js"',
+            b'src="/static/legal_data.js?v=' + _legal_version().encode() + b'"')
     resp = Response(content=payload, status_code=status)
     raw_headers = []
     for ln in lines[1:]:
@@ -148,12 +166,9 @@ def legal_data():
     """Impressum/Datenschutz-Angaben: $APP_DATA/legal_data.js hat Vorrang
     (überlebt Code-Updates, wird von migrate_data.py aus dem alten Server
     übernommen), sonst die mitgelieferte Vorlage."""
-    p = DATA / "legal_data.js"
-    if not p.is_file():
-        p = STATIC / "legal_data.js"
-    return Response(p.read_bytes(),
+    return Response(_legal_file().read_bytes(),
                     media_type="application/javascript; charset=utf-8",
-                    headers={"Cache-Control": "public, max-age=300"})
+                    headers={"Cache-Control": "no-cache"})
 
 
 # Statische Assets (speed_chart.js, ...)

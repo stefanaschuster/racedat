@@ -60,6 +60,13 @@ class TestApp(unittest.TestCase):
         finally:
             (Path(self.tmp.name) / "legal_data.js").unlink()
 
+    def test_legal_pages_version_the_script_url(self):
+        import re
+        for page in ("/impressum", "/datenschutz"):
+            r = self.c.get(page)
+            self.assertRegex(r.text, r'src="/static/legal_data\.js\?v=\d+"')
+        self.assertEqual(self.c.get("/static/legal_data.js").headers["cache-control"], "no-cache")
+
     def test_login_sets_cookie(self):
         r = self.c.post("/login", data={"email": "t@example.com",
                                         "password": "secret123pw"},

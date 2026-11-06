@@ -22,9 +22,13 @@ Ablauf:
   3. gleiches ohne --dry-run
   4. App starten, mit altem Login testen.
 
-Die Konfiguration (config.json) wird NICHT kopiert; sie gehört jetzt in die
-.env der App (BASE_URL, BREVO_API_KEY, MAIL_SENDER_EMAIL, MAIL_SENDER_NAME,
-MAPTILER_KEY). Das Skript zeigt die passenden Zeilen an.
+Konfiguration: Die Werte aus der alten config.json (maptiler_key, smtp.sender_*,
+smtp.password als BREVO_API_KEY, falls es ein Brevo-API-Key "xkeysib-..." ist)
+werden in die .env der App geschrieben (Standard: <App>/.env, also neben dem
+Datenverzeichnis; --env ändert den Pfad). Bereits gesetzte, nicht leere Werte
+in der .env werden NIE überschrieben. BASE_URL wird auf die neue Adresse
+gesetzt (--base-url, sonst https://<App-Name>.nativeai.digitalsandkasten.de).
+Geheimnisse werden nur maskiert angezeigt.
 """
 import argparse
 import json
@@ -94,6 +98,83 @@ def remap(value, old_prefixes, new_root: Path):
     return v
 
 
+ENV_KEYS = ("MAPTILER_KEY", "BASE_URL", "BREVO_API_KEY", "MAIL_SENDER_EMAIL", "MAIL_SENDER_NAME")
+KNOWN_CFG = {"maptiler_key", "base_url", "smtp"}
+
+
+def mask(key: str, val: str) -> str:
+    if key in ("BREVO_API_KEY", "MAPTILER_KEY") and val:
+        return val[:6] + "…" + f" ({len(val)} Zeichen)"
+    return val
+
+
+def read_env(path: Path) -> dict:
+    out = {}
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if "=" in line and not line.lstrip().startswith("#"):
+                k, v = line.split("=", 1)
+                out[k.strip()] = v.strip().strip('"').strip("'")
+    return out
+
+
+def migrate_env(cfg_path: Path, env_path: Path, base_url: str, dry: bool):
+    print("\nKonfiguration -> " + str(env_path))
+    cfg = {}
+    if cfg_path.is_file():
+        try:
+            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            print(f"  WARNUNG: {cfg_path} nicht lesbar ({e}); nur BASE_URL wird gesetzt")
+    else:
+        print(f"  Hinweis: {cfg_path} nicht vorhanden")
+    smtp = cfg.get("smtp") or {}
+    want = {}
+    if cfg.get("maptiler_key"):
+        want["MAPTILER_KEY"] = str(cfg["maptiler_key"])
+    if smtp.get("sender_email"):
+        want["MAIL_SENDER_EMAIL"] = str(smtp["sender_email"])
+    if smtp.get("sender_name"):
+        want["MAIL_SENDER_NAME"] = str(smtp["sender_name"])
+    pw = str(smtp.get("password") or "")
+    if pw.startswith("xkeysib-"):
+        want["BREVO_API_KEY"] = pw
+    elif pw:
+        print("  BREVO_API_KEY: altes SMTP-Passwort ist kein API-Key (xkeysib-…); "
+              "in Brevo unter SMTP & API -> API-Keys einen erzeugen und selbst eintragen")
+    want["BASE_URL"] = base_url
+    have = read_env(env_path)
+    todo = {k: v for k, v in want.items() if not have.get(k)}
+    for k, v in want.items():
+        if k in todo:
+            print(f"  {k}={mask(k, v)}  [{'würde gesetzt' if dry else 'gesetzt'}]")
+        else:
+            print(f"  {k}: bereits in .env gesetzt, bleibt unverändert")
+    missing = [k for k in ENV_KEYS if k not in want and not have.get(k)]
+    if missing:
+        print("  Noch von Hand einzutragen: " + ", ".join(missing))
+    extra = sorted(set(cfg) - KNOWN_CFG)
+    if extra:
+        print("  Nicht übernommen (unbekannte Schlüssel in config.json): " + ", ".join(extra))
+    if todo and not dry:
+        env_path.parent.mkdir(parents=True, exist_ok=True)
+        old = env_path.read_text(encoding="utf-8") if env_path.is_file() else ""
+        lines = old.splitlines()
+        for k, v in todo.items():
+            repl = f"{k}={v}"
+            for n, line in enumerate(lines):
+                if line.split("=", 1)[0].strip() == k and "=" in line:
+                    lines[n] = repl
+                    break
+            else:
+                lines.append(repl)
+        if old:
+            shutil.copy2(env_path, env_path.with_name(env_path.name + f".bak-{time.strftime('%Y%m%d-%H%M%S')}"))
+        env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        os.chmod(env_path, 0o600)
+        print("  .env aktualisiert (Sicherung als .env.bak-…)")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -103,6 +184,9 @@ def main() -> int:
     ap.add_argument("--with-adhoc", action="store_true", help="auch adhoc_uploads/ kopieren (meist unnötig)")
     ap.add_argument("--replace-db", action="store_true",
                     help="nicht-leere Ziel-DB ersetzen (Sicherung wird angelegt)")
+    ap.add_argument("--env", help=".env der App (Standard: <dst>/../.env)")
+    ap.add_argument("--base-url", help="BASE_URL der neuen App (Standard: https://<App-Name>.nativeai.digitalsandkasten.de)")
+    ap.add_argument("--no-env", action="store_true", help="Konfiguration nicht übernehmen")
     a = ap.parse_args()
 
     src = Path(a.src).expanduser().resolve()
@@ -208,25 +292,11 @@ def main() -> int:
         for c in stats["conflicts"][:10]:
             print(f"   Konflikt (nicht überschrieben): {c}")
 
-    # --- 4. Hinweis auf .env
-    cfg_path = src / "config.json"
-    print("\nKonfiguration -> .env der App (config.json wird nicht kopiert):")
-    lines = []
-    if cfg_path.is_file():
-        try:
-            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-        except Exception:
-            cfg = {}
-        if cfg.get("maptiler_key"):
-            lines.append(f"MAPTILER_KEY={cfg['maptiler_key']}")
-        smtp = cfg.get("smtp") or {}
-        if smtp.get("sender_email"):
-            lines.append(f"MAIL_SENDER_EMAIL={smtp['sender_email']}")
-        if smtp.get("sender_name"):
-            lines.append(f"MAIL_SENDER_NAME={smtp['sender_name']}")
-    lines.append("BASE_URL=https://<appname>.nativeai.digitalsandkasten.de")
-    lines.append("BREVO_API_KEY=<API-Key aus Brevo, nicht der SMTP-Key>")
-    print("\n".join("  " + l for l in lines))
+    # --- 4. Konfiguration -> .env
+    if not a.no_env:
+        env_path = Path(a.env).expanduser() if a.env else dst.parent / ".env"
+        base_url = a.base_url or f"https://{dst.parent.name}.nativeai.digitalsandkasten.de"
+        migrate_env(src / "config.json", env_path, base_url, dry)
     if dry:
         print("\nDRY-RUN: nichts geschrieben.")
     return 0

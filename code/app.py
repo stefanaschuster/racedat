@@ -29,6 +29,35 @@ from fastapi.staticfiles import StaticFiles
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+# --- Große Module können als Teile unter code/_parts/<modul>/pNN.txt liegen
+# (der nativeAI-Connector schreibt pro Aufruf nur begrenzt viel). Dann werden
+# sie hier zur Laufzeit zusammengesetzt; __file__ zeigt auf code/<modul>.py,
+# damit relative Pfade (webapp/, thresholds.json) unverändert funktionieren.
+import importlib.abc  # noqa: E402
+import importlib.util  # noqa: E402
+
+_PARTS = HERE / "_parts"
+
+
+class _PartsFinder(importlib.abc.MetaPathFinder, importlib.abc.Loader):
+    def find_spec(self, name, path=None, target=None):
+        if path is None and (_PARTS / name).is_dir():
+            return importlib.util.spec_from_loader(
+                name, self, origin=str(HERE / f"{name}.py"))
+        return None
+
+    def create_module(self, spec):
+        return None
+
+    def exec_module(self, module):
+        parts = sorted((_PARTS / module.__name__).glob("p*.txt"))
+        src = b"".join(p.read_bytes() for p in parts).decode("utf-8")
+        module.__file__ = str(HERE / f"{module.__name__}.py")
+        exec(compile(src, module.__file__, "exec"), module.__dict__)
+
+
+sys.meta_path.append(_PartsFinder())
+
 import debuglog  # noqa: E402
 import webserver  # noqa: E402
 

@@ -105,6 +105,42 @@ class TestMigration(unittest.TestCase):
                                  "--dst", str(new)], capture_output=True, text=True)
             self.assertEqual(r2.returncode, 2)
 
+    def test_config_is_taken_over_into_env(self):
+        import json
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            old, app = t / "old", t / "racedat"
+            new = app / "data"
+            old.mkdir(); app.mkdir()
+            con = sqlite3.connect(old / "sessions.db")
+            con.executescript(
+                "CREATE TABLE users(id INTEGER PRIMARY KEY, email TEXT);"
+                "CREATE TABLE sessions(id TEXT, file_path TEXT);"
+                "CREATE TABLE events(id INTEGER, file_path TEXT);"
+                "CREATE TABLE laps(id INTEGER);")
+            con.commit(); con.close()
+            (old / "config.json").write_text(json.dumps({
+                "maptiler_key": "mt-key-123456", "base_url": "https://racedat.de",
+                "smtp": {"password": "xkeysib-abcdef0123456789",
+                         "sender_email": "no-reply@racedat.de",
+                         "sender_name": "Racedat"},
+                "foo": 1}))
+            (app / ".env").write_text("MAIL_SENDER_NAME=Behalten\n")
+            script = str(CODE / "migrate_data.py")
+            r = subprocess.run([sys.executable, "-I", script, "--src", str(old),
+                                "--dst", str(new)], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+            env = dict(l.split("=", 1) for l in (app / ".env").read_text().splitlines())
+            self.assertEqual(env["MAPTILER_KEY"], "mt-key-123456")
+            self.assertEqual(env["BREVO_API_KEY"], "xkeysib-abcdef0123456789")
+            self.assertEqual(env["MAIL_SENDER_EMAIL"], "no-reply@racedat.de")
+            self.assertEqual(env["MAIL_SENDER_NAME"], "Behalten")  # nicht überschrieben
+            self.assertEqual(env["BASE_URL"],
+                             "https://racedat.nativeai.digitalsandkasten.de")
+            self.assertNotIn("xkeysib-abcdef0123456789", r.stdout)  # maskiert
+            self.assertIn("foo", r.stdout)  # unbekannter Schlüssel gemeldet
+            self.assertTrue(list(app.glob(".env.bak-*")))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,10 @@
+racedat
+Copyright 2026 Stefan A. Schuster
+
+This product includes software developed by Stefan A. Schuster
+(https://github.com/stefanaschuster/racedat).
+
+Third-party content:
+
+code/parsers/channel_names.py contains a channel name mapping taken from
+aim2motec by ludovicb1239, licensed under the MIT License.

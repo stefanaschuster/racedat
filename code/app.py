@@ -7,7 +7,7 @@ Worker-Thread läuft; seine Antwort (Status, Header, Body, auch mehrere
 Set-Cookie) wird 1:1 zurückgegeben. Statische Assets liefert StaticFiles.
 
 Laufzeit-Konfiguration (.env):
-  BASE_URL           https://<app>.nativeai.digitalsandkasten.de (Verify-Links)
+  BASE_URL           öffentliche Adresse der App, z. B. https://<app>.<domain> (Verify-Links)
   BREVO_API_KEY      Brevo-API-Key (Registrierungsmails über HTTPS)
   MAIL_SENDER_EMAIL  verifizierter Brevo-Absender
   MAIL_SENDER_NAME   Anzeigename (optional)

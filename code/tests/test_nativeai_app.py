@@ -149,7 +149,8 @@ class TestMigration(unittest.TestCase):
             (legacy / "webapp" / "legal_data.js").write_text('const LEGAL_DATA={name:"Max Muster"};')
             script = str(CODE / "migrate_data.py")
             r = subprocess.run([sys.executable, "-I", script, "--src", str(old),
-                                "--dst", str(new), "--legacy-app", str(legacy)],
+                                "--dst", str(new), "--legacy-app", str(legacy),
+                                "--base-url", "https://racedat.example.org/"],
                                capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
             env = dict(l.split("=", 1) for l in (app / ".env").read_text().splitlines())
@@ -157,8 +158,7 @@ class TestMigration(unittest.TestCase):
             self.assertEqual(env["BREVO_API_KEY"], "xkeysib-abcdef0123456789")
             self.assertEqual(env["MAIL_SENDER_EMAIL"], "no-reply@racedat.de")
             self.assertEqual(env["MAIL_SENDER_NAME"], "Behalten")  # nicht überschrieben
-            self.assertEqual(env["BASE_URL"],
-                             "https://racedat.nativeai.digitalsandkasten.de")
+            self.assertEqual(env["BASE_URL"], "https://racedat.example.org")
             self.assertNotIn("xkeysib-abcdef0123456789", r.stdout)  # maskiert
             self.assertIn("foo", r.stdout)  # unbekannter Schlüssel gemeldet
             self.assertTrue(list(app.glob(".env.bak-*")))

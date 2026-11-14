@@ -1,0 +1,9 @@
+Betreff: Racedat — E-Mail-Adresse bestätigen
+
+Willkommen bei Racedat!
+
+Bitte bestätige deine E-Mail-Adresse über diesen Link (gültig 24 Stunden):
+
+{link}
+
+Falls du dich nicht registriert hast, kannst du diese Mail ignorieren.

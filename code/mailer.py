@@ -14,9 +14,12 @@ Konfiguration (.env im App-Verzeichnis):
 """
 from __future__ import annotations
 
+import html
 import json
+import re
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Optional
 
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
@@ -82,34 +85,41 @@ def send_mail(smtp_cfg: dict, *, to_email: str, subject: str,
         raise MailSendError(f"Brevo-API nicht erreichbar: {e}") from e
 
 
+MAIL_TEMPLATES = Path(__file__).resolve().parent / "mail"
+
+
+def _fill(text: str, values: dict, escape: bool = False) -> str:
+    """{platzhalter} einmal ersetzen; unbekannte bleiben stehen."""
+    def repl(m):
+        if m.group(1) not in values:
+            return m.group(0)
+        v = str(values[m.group(1)])
+        return html.escape(v, quote=True) if escape else v
+    return re.sub(r"\{(\w+)\}", repl, text)
+
+
+def render_mail(template: str, **values) -> tuple[str, str, Optional[str]]:
+    """Vorlage mail/<template>.txt (erste Zeile "Betreff: …", Leerzeile, Text)
+    und optional mail/<template>.html. Liefert (Betreff, Text, HTML oder None)."""
+    try:
+        raw = (MAIL_TEMPLATES / f"{template}.txt").read_text(encoding="utf-8")
+    except OSError as e:
+        raise MailSendError(f"Mail-Vorlage {template}.txt nicht lesbar: {e}") from e
+    head, _, body = raw.partition("\n")
+    if not head.lower().startswith("betreff:"):
+        raise MailSendError(f"{template}.txt: erste Zeile muss mit 'Betreff:' beginnen")
+    subject = _fill(head.split(":", 1)[1].strip(), values)
+    text_body = _fill(body.lstrip("\n"), values)
+    html_path = MAIL_TEMPLATES / f"{template}.html"
+    html_body = None
+    if html_path.is_file():
+        html_body = _fill(html_path.read_text(encoding="utf-8"), values, escape=True)
+    return subject, text_body, html_body
+
+
 def send_verification_email(smtp_cfg: dict, *, to_email: str,
                              verify_url: str) -> None:
-    """Compose + send the registration-verification e-mail."""
-    subject = "Racedat — E-Mail-Adresse bestätigen"
-    text_body = (
-        "Willkommen bei Racedat!\n\n"
-        "Bitte bestätige deine E-Mail-Adresse über diesen Link "
-        "(gültig 24 Stunden):\n\n"
-        f"{verify_url}\n\n"
-        "Falls du dich nicht registriert hast, kannst du diese Mail "
-        "ignorieren.\n"
-    )
-    html_body = f"""\
-<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-  <h2 style="margin-bottom:8px">Willkommen bei Racedat!</h2>
-  <p>Bitte bestätige deine E-Mail-Adresse, um deinen Account zu aktivieren
-     (Link ist 24 Stunden gültig):</p>
-  <p style="margin:24px 0">
-    <a href="{verify_url}"
-       style="background:#00d4ff;color:#000;padding:12px 24px;
-              text-decoration:none;font-weight:bold;display:inline-block">
-      E-MAIL BESTÄTIGEN
-    </a>
-  </p>
-  <p style="color:#888;font-size:13px">
-    Falls du dich nicht registriert hast, kannst du diese Mail ignorieren.
-  </p>
-</div>
-"""
+    """Bestätigungsmail aus mail/bestaetigung.txt/.html senden."""
+    subject, text_body, html_body = render_mail("bestaetigung", link=verify_url)
     send_mail(smtp_cfg, to_email=to_email, subject=subject,
               text_body=text_body, html_body=html_body)

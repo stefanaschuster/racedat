@@ -1,0 +1,14 @@
+Mail-Vorlagen von Racedat
+=========================
+
+  bestaetigung.txt    Bestätigungsmail bei der Registrierung (Textfassung)
+  bestaetigung.html   dieselbe Mail als HTML (optional; fehlt sie, nur Text)
+                      Platzhalter: {link}
+
+.txt: erste Zeile "Betreff: …", dann eine Leerzeile, dann der Text.
+.html: nur der HTML-Inhalt, Betreff kommt aus der .txt.
+Platzhalter werden einmal ersetzt, unbekannte bleiben stehen. In .html werden
+Werte HTML-maskiert eingesetzt.
+
+Die Vorlagen werden bei jedem Versand neu gelesen; nach einem Deploy gilt der
+neue Text sofort.

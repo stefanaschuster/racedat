@@ -9,6 +9,7 @@ code/app.py            Einstiegspunkt (uvicorn app:app), bindet webserver.WebHan
 code/webserver.py      Seiten, API, Auth (unverändert aus der Standalone-Version)
 code/static/           ausgelieferte JS-Assets
 code/webapp/           HTML-Templates
+code/mail/             Mail-Vorlagen (Betreff + Text, optional HTML), siehe code/mail/LIESMICH.txt
 code/migrate_data.py   Datenübernahme vom alten Server
 code/requirements.txt  gepinnte Abhängigkeiten
 code/.env.example      Konfiguration (-> .env im App-Verzeichnis)

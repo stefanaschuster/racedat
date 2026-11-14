@@ -26,8 +26,8 @@ Konfiguration: Die Werte aus der alten config.json (maptiler_key, smtp.sender_*,
 smtp.password als BREVO_API_KEY, falls es ein Brevo-API-Key "xkeysib-..." ist)
 werden in die .env der App geschrieben (Standard: <App>/.env, also neben dem
 Datenverzeichnis; --env ändert den Pfad). Bereits gesetzte, nicht leere Werte
-in der .env werden NIE überschrieben. BASE_URL wird auf die neue Adresse
-gesetzt (--base-url, sonst https://<App-Name>.nativeai.digitalsandkasten.de).
+in der .env werden NIE überschrieben. BASE_URL wird nur mit --base-url gesetzt
+(öffentliche Adresse der App); ohne steht sie in der Liste "von Hand einzutragen".
 Geheimnisse werden nur maskiert angezeigt.
 
 Impressum/Datenschutz: Die ausgefüllte legal_data.js des alten Servers
@@ -132,7 +132,7 @@ def migrate_env(cfg_path: Path, env_path: Path, base_url: str, dry: bool):
         try:
             cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
         except Exception as e:
-            print(f"  WARNUNG: {cfg_path} nicht lesbar ({e}); nur BASE_URL wird gesetzt")
+            print(f"  WARNUNG: {cfg_path} nicht lesbar ({e}); config.json wird übersprungen")
     else:
         print(f"  Hinweis: {cfg_path} nicht vorhanden")
     smtp = cfg.get("smtp") or {}
@@ -149,7 +149,8 @@ def migrate_env(cfg_path: Path, env_path: Path, base_url: str, dry: bool):
     elif pw:
         print("  BREVO_API_KEY: altes SMTP-Passwort ist kein API-Key (xkeysib-…); "
               "in Brevo unter SMTP & API -> API-Keys einen erzeugen und selbst eintragen")
-    want["BASE_URL"] = base_url
+    if base_url:
+        want["BASE_URL"] = base_url
     have = read_env(env_path)
     todo = {k: v for k, v in want.items() if not have.get(k)}
     for k, v in want.items():
@@ -219,7 +220,7 @@ def main() -> int:
     ap.add_argument("--replace-db", action="store_true",
                     help="nicht-leere Ziel-DB ersetzen (Sicherung wird angelegt)")
     ap.add_argument("--env", help=".env der App (Standard: <dst>/../.env)")
-    ap.add_argument("--base-url", help="BASE_URL der neuen App (Standard: https://<App-Name>.nativeai.digitalsandkasten.de)")
+    ap.add_argument("--base-url", help="BASE_URL der neuen App, z. B. https://<app>.<domain> (sonst nicht gesetzt)")
     ap.add_argument("--no-env", action="store_true", help="Konfiguration nicht übernehmen")
     ap.add_argument("--legacy-app", default="/opt/lap_compare/lap_tool",
                     help="Programmverzeichnis des alten Servers (für webapp/legal_data.js)")
@@ -333,8 +334,7 @@ def main() -> int:
     # --- 4. Konfiguration -> .env
     if not a.no_env:
         env_path = Path(a.env).expanduser() if a.env else dst.parent / ".env"
-        base_url = a.base_url or f"https://{dst.parent.name}.nativeai.digitalsandkasten.de"
-        migrate_env(src / "config.json", env_path, base_url, dry)
+        migrate_env(src / "config.json", env_path, (a.base_url or "").strip().rstrip("/"), dry)
     if not a.no_legal:
         migrate_legal(dst, Path(a.legacy_app).expanduser(), a.legal_js, dry)
     if dry:

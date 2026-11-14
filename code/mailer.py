@@ -10,7 +10,7 @@ Konfiguration (.env im App-Verzeichnis):
                                     der SMTP-Key)
   MAIL_SENDER_EMAIL=no-reply@racedat.de   (in Brevo als Absender verifiziert)
   MAIL_SENDER_NAME=Racedat
-  BASE_URL=https://<app>.nativeai.digitalsandkasten.de
+  BASE_URL=https://<app>.<domain>                (öffentliche Adresse der App)
 """
 from __future__ import annotations
 

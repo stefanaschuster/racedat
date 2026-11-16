@@ -14,11 +14,15 @@ Laufzeit-Konfiguration (.env):
   MAPTILER_KEY       optional, für die Kartenansicht
   MAX_UPLOAD_MB      Upload-Limit in MB (Standard 50)
   DEBUG_LOG          "1" für strukturierte Request-Logs auf stderr
+  HANDLER_TIMEOUT_S  Watchdog: Neustart, wenn ein Request länger hängt (Standard 300)
 Daten: $APP_DATA (sessions.db, originals/, reports/, legal_data.js, ...).
 """
 import io
+import faulthandler
 import os
 import sys
+import threading
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -72,6 +76,34 @@ _DROP_REQ = {b"connection", b"transfer-encoding", b"content-length",
 _DROP_RESP = {"connection", "content-length", "server", "date",
               "transfer-encoding", "keep-alive"}
 
+# --- Watchdog -----------------------------------------------------------------
+# Hängt ein Handler (alle Plätze im _LIMITER belegt → App antwortet nicht mehr,
+# /health aber schon), schreibt der Watchdog die Stacks aller Threads ins Log
+# und beendet den Prozess; systemd startet ihn neu.
+_HANG_S = int(os.environ.get("HANDLER_TIMEOUT_S", "300"))
+_SLOW_S = 20
+_ACTIVE: dict[int, tuple[float, str]] = {}
+_ACTIVE_LOCK = threading.Lock()
+
+
+def _watchdog():
+    while True:
+        time.sleep(10)
+        now = time.monotonic()
+        with _ACTIVE_LOCK:
+            hung = [(now - t0, tgt) for t0, tgt in _ACTIVE.values()
+                    if now - t0 > _HANG_S]
+        if not hung:
+            continue
+        for age, tgt in hung:
+            sys.stderr.write(f"[watchdog] Handler hängt seit {int(age)} s: {tgt}\n")
+        sys.stderr.write("[watchdog] Thread-Stacks:\n")
+        sys.stderr.flush()
+        faulthandler.dump_traceback(file=sys.stderr, all_threads=True)
+        sys.stderr.write("[watchdog] Prozess wird beendet (Neustart durch systemd)\n")
+        sys.stderr.flush()
+        os._exit(70)
+
 
 class _BridgeHandler(webserver.WebHandler):
     """WebHandler ohne Socket: liest aus einem Puffer, schreibt in einen Puffer."""
@@ -102,6 +134,22 @@ def _legal_version() -> str:
 
 def _run_handler(method: str, target: str, headers, body: bytes,
                  client_ip: str) -> Response:
+    key = threading.get_ident()
+    t0 = time.monotonic()
+    with _ACTIVE_LOCK:
+        _ACTIVE[key] = (t0, f"{method} {target} ({client_ip})")
+    try:
+        return _run_handler_inner(method, target, headers, body, client_ip)
+    finally:
+        with _ACTIVE_LOCK:
+            _ACTIVE.pop(key, None)
+        dt = time.monotonic() - t0
+        if dt > _SLOW_S:
+            sys.stderr.write(f"[slow] {dt:.0f} s {method} {target} ({client_ip})\n")
+
+
+def _run_handler_inner(method: str, target: str, headers, body: bytes,
+                       client_ip: str) -> Response:
     head = [f"{method} {target} HTTP/1.1".encode("latin-1")]
     for k, v in headers:
         if k.lower() in _DROP_REQ:
@@ -149,6 +197,7 @@ async def lifespan(app: FastAPI):
     debuglog.configure(enabled=os.environ.get("DEBUG_LOG") == "1")
     DATA.mkdir(parents=True, exist_ok=True)
     webserver.AppState.init(DATA.resolve())  # Schema/Verzeichnisse idempotent
+    threading.Thread(target=_watchdog, name="watchdog", daemon=True).start()
     yield
 
 

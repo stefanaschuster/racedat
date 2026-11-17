@@ -64,6 +64,7 @@ sys.meta_path.append(_PartsFinder())
 
 import debuglog  # noqa: E402
 import webserver  # noqa: E402
+import mobile  # noqa: E402  Handy-Ansicht unter /m
 
 DATA = Path(os.environ.get("APP_DATA", str(HERE.parent / "data")))
 STATIC = HERE / "static"
@@ -220,8 +221,11 @@ def legal_data():
                     headers={"Cache-Control": "no-cache"})
 
 
-# Statische Assets (speed_chart.js, ...)
+# Statische Assets (speed_chart.js, Handy-Ansicht unter static/m/, ...)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+
+# Handy-Ansicht (/m und /m/api/...), vor der Brücke zum WebHandler
+app.include_router(mobile.router)
 
 
 @app.api_route("/{path:path}",
@@ -236,6 +240,12 @@ async def bridge(request: Request, path: str):
     if len(body) > _MAX_BODY:
         return Response("Upload zu groß (max. " + str(webserver.MAX_UPLOAD_BYTES // 1048576) + " MB).",
                         status_code=413, media_type="text/plain")
+    if path == "":
+        # Startseite: Handys landen in der Handy-Ansicht (außer sie haben
+        # dort "Desktop-Version" gewählt)
+        redirect = mobile.mobile_redirect(request)
+        if redirect is not None:
+            return redirect
     raw_path = request.scope.get("raw_path") or request.url.path.encode()
     target = raw_path.decode("latin-1")
     if request.url.query:

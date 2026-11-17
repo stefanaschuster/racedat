@@ -243,6 +243,79 @@ app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None,
               openapi_url=None)
 
 
+# --- Crawler ------------------------------------------------------------------
+# 1) robots.txt: rechenintensive und private Seiten für alle Crawler gesperrt,
+#    bekannte SEO-/KI-Crawler komplett.
+# 2) Sperre: bekannte Crawler bekommen sofort 403 (sie halten sich oft nicht an
+#    robots.txt); jeder andere Bot bekommt 403 auf den teuren Seiten.
+#    Weitere Namen per .env: BLOCKED_BOTS=name1,name2
+
+_HEAVY_PATHS = ("/analyze", "/analysis", "/compare", "/report", "/download",
+                "/coach", "/api/", "/m/api/", "/sessions", "/admin",
+                "/profile", "/login", "/register", "/verify", "/logout")
+
+_BLOCKED_BOTS = [
+    # SEO-Werkzeuge
+    "semrushbot", "ahrefsbot", "mj12bot", "dotbot", "blexbot", "dataforseobot",
+    "serpstatbot", "barkrowler", "seekportbot", "megaindex", "linkpadbot",
+    "seznambot", "screaming frog", "sistrix", "siteauditbot", "rogerbot",
+    # KI- und Datensammler
+    "gptbot", "chatgpt-user", "oai-searchbot", "claudebot", "claude-web",
+    "anthropic-ai", "ccbot", "bytespider", "amazonbot", "meta-externalagent",
+    "facebookbot", "imagesiftbot", "diffbot", "omgili", "timpibot",
+    "perplexitybot", "youbot", "cohere-ai", "petalbot", "applebot-extended",
+    "google-extended",
+    # Sonstige
+    "zoominfobot", "awario", "magpie-crawler", "turnitinbot", "censysinspect",
+    "scrapy",
+]
+_BLOCKED_BOTS += [b.strip().lower() for b in
+                  os.environ.get("BLOCKED_BOTS", "").split(",") if b.strip()]
+# Nur auf den teuren Seiten gesperrt (Skript-Clients bleiben für / und den
+# Health-Check des Deploys erlaubt)
+_GENERIC_BOT = ("bot", "crawl", "spider", "slurp", "fetcher", "scraper",
+                "python-requests", "python-urllib", "go-http-client",
+                "curl/", "wget/", "httpx", "aiohttp")
+
+_ROBOTS_TXT = "\n".join(
+    [f"User-agent: {name}\nDisallow: /\n" for name in (
+        "SemrushBot", "AhrefsBot", "MJ12bot", "DotBot", "BLEXBot",
+        "DataForSeoBot", "serpstatbot", "Barkrowler", "SeekportBot",
+        "PetalBot", "GPTBot", "ClaudeBot", "CCBot", "Bytespider",
+        "Amazonbot", "meta-externalagent", "ImagesiftBot", "PerplexityBot",
+        "Google-Extended", "Applebot-Extended")]
+    + ["User-agent: *"]
+    + [f"Disallow: {p}" for p in _HEAVY_PATHS]
+    + ["Crawl-delay: 10", ""])
+
+
+def _is_heavy(path: str) -> bool:
+    return any(path == p.rstrip("/") or path.startswith(p.rstrip("/") + "/")
+               or (p.endswith("/") and path.startswith(p)) for p in _HEAVY_PATHS)
+
+
+@app.middleware("http")
+async def block_crawlers(request: Request, call_next):
+    path = request.url.path
+    if path == "/robots.txt" or path == "/health":
+        return await call_next(request)
+    ua = (request.headers.get("user-agent") or "").lower()
+    if not ua:
+        blocked = _is_heavy(path)
+    elif any(b in ua for b in _BLOCKED_BOTS):
+        blocked = True
+    else:
+        blocked = _is_heavy(path) and any(g in ua for g in _GENERIC_BOT)
+    if blocked:
+        return Response("Forbidden", status_code=403, media_type="text/plain")
+    return await call_next(request)
+
+
+@app.get("/robots.txt")
+def robots_txt():
+    return Response(_ROBOTS_TXT, media_type="text/plain; charset=utf-8")
+
+
 @app.get("/health")
 def health():
     return {"ok": True, "version": webserver.VERSION}

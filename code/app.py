@@ -17,6 +17,7 @@ Laufzeit-Konfiguration (.env):
   HANDLER_TIMEOUT_S  Watchdog: Neustart, wenn ein Request länger hängt (Standard 300)
 Daten: $APP_DATA (sessions.db, originals/, reports/, legal_data.js, ...).
 """
+import asyncio
 import io
 import faulthandler
 import os
@@ -82,7 +83,9 @@ _DROP_RESP = {"connection", "content-length", "server", "date",
 # /health aber schon), schreibt der Watchdog die Stacks aller Threads ins Log
 # und beendet den Prozess; systemd startet ihn neu.
 _HANG_S = int(os.environ.get("HANDLER_TIMEOUT_S", "300"))
-_SLOW_S = 20
+_SLOW_S = 5          # ab hier landet ein Request mit Wartezeit/Laufzeit im Log
+_LOOP_WARN_S = 10    # Ereignisschleife so lange ohne Reaktion → Stacks ins Log
+_LOOP_KILL_S = 120   # … so lange → Prozess beenden, systemd startet neu
 _ACTIVE: dict[int, tuple[float, str]] = {}
 _ACTIVE_LOCK = threading.Lock()
 
@@ -103,6 +106,33 @@ def _watchdog():
         faulthandler.dump_traceback(file=sys.stderr, all_threads=True)
         sys.stderr.write("[watchdog] Prozess wird beendet (Neustart durch systemd)\n")
         sys.stderr.flush()
+        os._exit(70)
+
+
+def _dump(reason: str) -> None:
+    sys.stderr.write(f"[watchdog] {reason} – Thread-Stacks:\n")
+    sys.stderr.flush()
+    faulthandler.dump_traceback(file=sys.stderr, all_threads=True)
+    sys.stderr.flush()
+
+
+def _loop_watch(loop: asyncio.AbstractEventLoop) -> None:
+    """Prüft alle 5 s, ob die Ereignisschleife reagiert. Hängt sie, kommt
+    kein Request mehr durch – auch /health nicht."""
+    while True:
+        time.sleep(5)
+        ev = threading.Event()
+        try:
+            loop.call_soon_threadsafe(ev.set)
+        except RuntimeError:      # Schleife beendet (Shutdown)
+            return
+        if ev.wait(_LOOP_WARN_S):
+            continue
+        _dump(f"Ereignisschleife reagiert seit {_LOOP_WARN_S} s nicht")
+        if ev.wait(_LOOP_KILL_S - _LOOP_WARN_S):
+            sys.stderr.write("[watchdog] Ereignisschleife reagiert wieder\n")
+            continue
+        _dump(f"Ereignisschleife reagiert seit {_LOOP_KILL_S} s nicht, Prozess wird beendet")
         os._exit(70)
 
 
@@ -134,7 +164,7 @@ def _legal_version() -> str:
 
 
 def _run_handler(method: str, target: str, headers, body: bytes,
-                 client_ip: str) -> Response:
+                 client_ip: str, t_in: float) -> Response:
     key = threading.get_ident()
     t0 = time.monotonic()
     with _ACTIVE_LOCK:
@@ -145,8 +175,13 @@ def _run_handler(method: str, target: str, headers, body: bytes,
         with _ACTIVE_LOCK:
             _ACTIVE.pop(key, None)
         dt = time.monotonic() - t0
-        if dt > _SLOW_S:
-            sys.stderr.write(f"[slow] {dt:.0f} s {method} {target} ({client_ip})\n")
+        wait = t0 - t_in
+        if dt + wait > _SLOW_S:
+            # Warten = Zeit bis ein Platz im _LIMITER frei war; Handler = Rechenzeit
+            with _ACTIVE_LOCK:
+                busy = len(_ACTIVE)
+            sys.stderr.write(f"[slow] {dt + wait:.1f} s (Warten {wait:.1f} s, Handler {dt:.1f} s, "
+                             f"belegt {busy}/3) {method} {target} ({client_ip})\n")
 
 
 def _run_handler_inner(method: str, target: str, headers, body: bytes,
@@ -199,6 +234,8 @@ async def lifespan(app: FastAPI):
     DATA.mkdir(parents=True, exist_ok=True)
     webserver.AppState.init(DATA.resolve())  # Schema/Verzeichnisse idempotent
     threading.Thread(target=_watchdog, name="watchdog", daemon=True).start()
+    threading.Thread(target=_loop_watch, args=(asyncio.get_running_loop(),),
+                     name="loop-watch", daemon=True).start()
     yield
 
 
@@ -232,6 +269,7 @@ app.include_router(mobile.router)
                methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD",
                         "OPTIONS"])
 async def bridge(request: Request, path: str):
+    t_in = time.monotonic()
     cl = request.headers.get("content-length")
     if cl and cl.isdigit() and int(cl) > _MAX_BODY:
         return Response("Upload zu groß (max. " + str(webserver.MAX_UPLOAD_BYTES // 1048576) + " MB).",
@@ -253,4 +291,4 @@ async def bridge(request: Request, path: str):
     client_ip = request.client.host if request.client else ""
     return await anyio.to_thread.run_sync(
         _run_handler, request.method, target, request.headers.raw, body,
-        client_ip, limiter=_LIMITER)
+        client_ip, t_in, limiter=_LIMITER)

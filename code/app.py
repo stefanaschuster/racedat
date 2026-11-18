@@ -228,6 +228,17 @@ def _run_handler_inner(method: str, target: str, headers, body: bytes,
     return resp
 
 
+def _summary_backfill():
+    """Kanal-Zusammenfassungen alter Runden einmalig nachtragen, eine Runde
+    nach der anderen, damit /sessions nie alle lap_blobs auf einmal lädt."""
+    try:
+        n = webserver.AppState.db.backfill_channel_summaries()
+        if n:
+            print(f"[db] Kanal-Zusammenfassung für {n} Runden nachgetragen", flush=True)
+    except Exception as e:
+        print(f"[db] Nachtragen fehlgeschlagen: {e}", flush=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     debuglog.configure(enabled=os.environ.get("DEBUG_LOG") == "1")
@@ -236,6 +247,8 @@ async def lifespan(app: FastAPI):
     threading.Thread(target=_watchdog, name="watchdog", daemon=True).start()
     threading.Thread(target=_loop_watch, args=(asyncio.get_running_loop(),),
                      name="loop-watch", daemon=True).start()
+    threading.Thread(target=_summary_backfill, name="summary-backfill",
+                     daemon=True).start()
     yield
 
 

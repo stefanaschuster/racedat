@@ -177,6 +177,19 @@ CREATE INDEX IF NOT EXISTS idx_bikes_user ON bikes(user_id);
 """
 
 
+
+def _channel_summary_json(lap_data: Any) -> str:
+    """Kleine Kanal-Zusammenfassung einer Runde als JSON (ohne total_roles)."""
+    ld = lap_data if isinstance(lap_data, dict) else {}
+    extras_dict = ld.get("extra_channels") or {}
+    roles_dict = ld.get("channel_roles") or {}
+    return json.dumps({
+        "extras_count": int(len(extras_dict)),
+        "roles_count": int(len(roles_dict)),
+        "assigned_role_ids": sorted(roles_dict.keys()),
+    })
+
+
 class DB:
     """Thread-safe SQLite connection wrapper.
 
@@ -228,6 +241,14 @@ class DB:
             cur.execute("ALTER TABLE users ADD COLUMN verify_sent_at TEXT")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_users_verify_token "
                     "ON users(verify_token)")
+
+        # Kanal-Zusammenfassung pro Runde als kleines JSON, damit die
+        # Rundenliste nicht jedes Mal alle lap_blobs laden muss. Alte
+        # Zeilen bleiben NULL und werden beim ersten Abruf nachgetragen.
+        cur.execute("PRAGMA table_info(laps)")
+        lap_cols = {row[1] for row in cur.fetchall()}
+        if "channel_summary" not in lap_cols:
+            cur.execute("ALTER TABLE laps ADD COLUMN channel_summary TEXT")
         cur.close()
 
     def _connect(self):
@@ -372,11 +393,12 @@ class DB:
         """Persist one extracted lap to the DB. `lap_data` is the dict from
         extract_lap_data() — we pickle it as-is."""
         blob = pickle.dumps(lap_data, protocol=pickle.HIGHEST_PROTOCOL)
+        summ = _channel_summary_json(lap_data)
         with self._cur() as cur:
             cur.execute(
-                "INSERT INTO laps (session_id, lap_number, duration_s, lap_blob) "
-                "VALUES (?, ?, ?, ?)",
-                (session_id, lap_number, duration_s, blob),
+                "INSERT INTO laps (session_id, lap_number, duration_s, lap_blob, "
+                "channel_summary) VALUES (?, ?, ?, ?, ?)",
+                (session_id, lap_number, duration_s, blob, summ),
             )
             return cur.lastrowid
 
@@ -387,16 +409,18 @@ class DB:
         If duration_s is None, the duration column is left untouched.
         Returns True if a row was updated."""
         blob = pickle.dumps(lap_data, protocol=pickle.HIGHEST_PROTOCOL)
+        summ = _channel_summary_json(lap_data)
         with self._cur() as cur:
             if duration_s is None:
                 cur.execute(
-                    "UPDATE laps SET lap_blob = ? WHERE id = ?",
-                    (blob, int(lap_id)),
+                    "UPDATE laps SET lap_blob = ?, channel_summary = ? WHERE id = ?",
+                    (blob, summ, int(lap_id)),
                 )
             else:
                 cur.execute(
-                    "UPDATE laps SET lap_blob = ?, duration_s = ? WHERE id = ?",
-                    (blob, float(duration_s), int(lap_id)),
+                    "UPDATE laps SET lap_blob = ?, channel_summary = ?, "
+                    "duration_s = ? WHERE id = ?",
+                    (blob, summ, float(duration_s), int(lap_id)),
                 )
             return cur.rowcount > 0
 
@@ -501,34 +525,69 @@ class DB:
         from parsers.channel_roles import ROLES as _ROLES
         total_roles = len(_ROLES)
         out: Dict[int, Dict[str, Any]] = {}
-        # SQLite has a 999-param IN-list limit; chunk if needed.
+        missing: List[int] = []
+        # Liest nur die kleine JSON-Spalte, nie alle lap_blobs auf einmal.
+        # Früher: SELECT lap_blob für alle Runden + fetchall() -> die ganze
+        # Telemetrie aller Runden gleichzeitig im Speicher; das hat /sessions
+        # minutenlang blockiert.
         CHUNK = 500
         with self._cur() as cur:
             for i in range(0, len(lap_ids), CHUNK):
                 chunk = lap_ids[i:i+CHUNK]
                 placeholders = ",".join("?" * len(chunk))
                 cur.execute(
-                    f"SELECT id, lap_blob FROM laps WHERE id IN ({placeholders})",
+                    f"SELECT id, channel_summary FROM laps WHERE id IN ({placeholders})",
                     chunk,
                 )
                 for row in cur.fetchall():
                     lid = int(row["id"])
-                    try:
-                        ld = pickle.loads(row["lap_blob"])
-                    except Exception:
-                        out[lid] = {"extras_count": 0, "roles_count": 0,
-                                    "total_roles": total_roles,
-                                    "assigned_role_ids": []}
+                    raw = row["channel_summary"]
+                    if raw is None:
+                        missing.append(lid)
                         continue
-                    extras_dict = ld.get("extra_channels") or {}
-                    roles_dict  = ld.get("channel_roles")  or {}
-                    out[lid] = {
-                        "extras_count": int(len(extras_dict)),
-                        "roles_count":  int(len(roles_dict)),
-                        "total_roles":  total_roles,
-                        "assigned_role_ids": sorted(roles_dict.keys()),
-                    }
+                    try:
+                        s = json.loads(raw)
+                    except Exception:
+                        missing.append(lid)
+                        continue
+                    out[lid] = {**s, "total_roles": total_roles}
+        # Alte Runden ohne Zusammenfassung: einzeln nachtragen, immer nur
+        # ein Blob im Speicher. Passiert pro Runde genau einmal.
+        for lid in missing:
+            summ = self._backfill_channel_summary(lid)
+            if summ is not None:
+                out[lid] = {**summ, "total_roles": total_roles}
         return out
+
+    def _backfill_channel_summary(self, lap_id: int) -> Optional[Dict[str, Any]]:
+        with self._cur() as cur:
+            cur.execute("SELECT lap_blob FROM laps WHERE id = ?", (int(lap_id),))
+            row = cur.fetchone()
+        if row is None:
+            return None
+        try:
+            ld = pickle.loads(row["lap_blob"])
+        except Exception:
+            ld = {}
+        del row
+        raw = _channel_summary_json(ld)
+        del ld
+        with self._cur() as cur:
+            cur.execute(
+                "UPDATE laps SET channel_summary = ? WHERE id = ? "
+                "AND channel_summary IS NULL",
+                (raw, int(lap_id)),
+            )
+        return json.loads(raw)
+
+    def backfill_channel_summaries(self) -> int:
+        """Trägt fehlende Zusammenfassungen für alle Runden nach (einzeln)."""
+        with self._cur() as cur:
+            cur.execute("SELECT id FROM laps WHERE channel_summary IS NULL")
+            ids = [int(r["id"]) for r in cur.fetchall()]
+        for lid in ids:
+            self._backfill_channel_summary(lid)
+        return len(ids)
 
     def query_laps(self, *, driver: str = "", bike: str = "", track: str = "",
                    date_from: str = "", date_to: str = "",
